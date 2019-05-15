@@ -10,7 +10,7 @@ from asr_lstm_ctc import model, input_data
 from asr_lstm_ctc.input_data import FIRST_INDEX, SEP_INDEX, SPACE_INDEX, N_FEATURES
 from typing import List
 
-PATH = "F:/for learn/Python/asr_ctc/"
+PATH = "F:/Code projects/Python/SpeechRecognition/asr_lstm_ctc"
 audio_path = os.path.join(PATH, "audios")
 n_classes = 28  # 26 + 1 no_label + 1 blank
 n_epochs = 800
