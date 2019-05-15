@@ -4,9 +4,7 @@ import os
 import sys
 import numpy as np
 import tensorflow as tf
-import models
-import input_data
-import constant
+from tf_examples import input_data, models, constant
 from tensorflow.contrib.quantize import create_training_graph
 from typing import Dict
 
@@ -102,6 +100,8 @@ def main(_):
     epoch_list = list(map(int, FLAGS.epoches.split(",")))
     lr_list = list(map(float, FLAGS.learning_rate.split(",")))
     assert len(epoch_list) == len(lr_list), "--epochs and --learning_rate must be same length"
+
+    # todo: Unfinished yet! Please carry on!
 
 
 
