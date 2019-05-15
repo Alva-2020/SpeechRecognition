@@ -152,7 +152,7 @@ class AudioProcessor(object):
     """Handles loading, partitioning, and preparing audio training data."""
 
     def __init__(self, *, data_dir: str, silence_percentage: float, unknown_percentage: float, wanted_words: List[str],
-                 validation_percentage: float, testing_percantage: float, model_settings: Dict, summary_dir: str=None):
+                 validation_percentage: float, testing_percantage: float, model_settings: Dict, graph: tf.Graph):
 
         assert validation_percentage + testing_percantage < 100, \
             "Invalid validation and testing percentage amount, their sum must be lower than 100"
@@ -166,8 +166,7 @@ class AudioProcessor(object):
         self.prepare_data_index(silence_percentage, unknown_percentage, wanted_words,
                                 validation_percentage, testing_percantage)
         self.background_data: List[np.ndarray] = self.prepare_background_data()
-        self.graph = self._build_graph(model_settings)
-        self.summary_writer_ = tf.summary.FileWriter(os.path.join(summary_dir, "data/"), self.graph) if summary_dir else None
+        self._build_graph(model_settings, graph)
 
     def prepare_data_index(self, silence_percentage: float, unknown_percentage: float, wanted_words: List[str],
                            validation_percentage: float, testing_percentage: float):
@@ -285,7 +284,7 @@ class AudioProcessor(object):
 
         return background_data
 
-    def _build_graph(self, model_settings):
+    def _build_graph(self, model_settings, graph: tf.Graph=None):
         """
         Builds a TensorFlow graph to apply the input distortions.
 
@@ -306,12 +305,11 @@ class AudioProcessor(object):
 
         Args:
             model_settings: Information about the current model being trained.
+            graph: Input graph
 
         Raises:
             ValueError: If the preprocessing mode isn't recognized.
         """
-        graph = tf.Graph()
-        tf.reset_default_graph()
         desired_samples = model_settings["desired_samples"]
         with graph.as_default():
             with tf.name_scope("input"):
@@ -363,7 +361,6 @@ class AudioProcessor(object):
                                      model_settings["preprocess"])
 
                 self.merged_summries = tf.summary.merge(tf.get_collection(tf.GraphKeys.SUMMARIES, scope="input"))
-        return graph
 
     def set_size(self, mode: str) -> int:
         assert mode in ["validation", "testing", "training"], \
@@ -456,8 +453,6 @@ class AudioProcessor(object):
             }
 
             summary, data_tensor = sess.run([self.merged_summries, self.output_], feed_dict=feed_dict)
-            if self.summary_writer_:
-                self.summary_writer_.add_summary(summary)
 
             data.append(data_tensor.flatten())
             labels.append(self.word_to_index[sample["label"]])

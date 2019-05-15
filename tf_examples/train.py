@@ -6,10 +6,28 @@ import numpy as np
 import tensorflow as tf
 from tf_examples import input_data, models, constant
 from tensorflow.contrib.quantize import create_training_graph
-from typing import Dict
+from typing import Dict, List
 
 
 FLAGS: argparse.Namespace = None
+
+
+def build_session(graph):
+    config = tf.ConfigProto()
+    config.gpu_options.per_process_gpu_memory_fraction = 0.8  # 程序最多只能占用指定gpu80%的显存
+    config.gpu_options.allow_growth = True  # 程序按需申请内存
+    sess = tf.Session(graph=graph, config=config)
+    return sess
+
+
+def get_current_learning_rate(current_epoch, epoch_list: List[int], lr_list: List[float]):
+    i = 0
+    for i, epoch in enumerate(epoch_list):
+        if current_epoch < epoch:
+            break
+        else:
+            current_epoch -= epoch
+    return lr_list[i]
 
 
 class TrainGraph:
@@ -80,17 +98,6 @@ def main(_):
         preprocess=FLAGS.preprocess
     )
 
-    audio_processor = input_data.AudioProcessor(
-        data_dir=FLAGS.data_dir,
-        silence_percentage=FLAGS.silence_percentage,
-        unknown_percentage=FLAGS.unknown_percentage,
-        wanted_words=FLAGS.wanted_words.split(","),
-        validation_percentage=FLAGS.validation_percenstage,
-        testing_percantage=FLAGS.testing_percentage,
-        model_settings=model_settings,
-        summary_dir=FLAGS.summary_dir
-    )
-
     fingerprint_size = model_settings["fingerprint_size"]
     label_count = model_settings["label_count"]
     time_shift_samples = int(FLAGS.time_shift_ms * FLAGS.sample_rate / 1000)
@@ -101,17 +108,52 @@ def main(_):
     lr_list = list(map(float, FLAGS.learning_rate.split(",")))
     assert len(epoch_list) == len(lr_list), "--epochs and --learning_rate must be same length"
 
-    # todo: Unfinished yet! Please carry on!
+    trainer = TrainGraph(model_settings)
+    with build_session(trainer.graph) as sess:
+        audio_processor: input_data.AudioProcessor = input_data.AudioProcessor(
+            data_dir=FLAGS.data_dir,
+            silence_percentage=FLAGS.silence_percentage,
+            unknown_percentage=FLAGS.unknown_percentage,
+            wanted_words=FLAGS.wanted_words.split(","),
+            validation_percentage=FLAGS.validation_percenstage,
+            testing_percantage=FLAGS.testing_percentage,
+            model_settings=model_settings,
+            graph=trainer.graph
+        )
 
+        start_epoch = 1
+        if FLAGS.start_checkpoint:
+            trainer.saver.restore(sess, FLAGS.start_checkpoint)
+            start_epoch = sess.run(trainer.global_step)
+        tf.logging.info("Training from step: %d" % start_epoch)
 
+        with open(os.path.join(FLAGS.traindir, FLAGS.model_architecture + "_lables.txt"), "w") as f:
+            for word in audio_processor.word_list:
+                f.write(word + "\n")
 
+        training_epochs_max = sum(epoch_list)
+        for epoch in range(start_epoch, training_epochs_max + 1):
+            # Figure out the current learning rate
+            lr = get_current_learning_rate(epoch, epoch_list, lr_list)
+            train_fingerprints, labels = audio_processor.get_data(
+                how_many=FLAGS.batch_aize, offset=0, model_settings=model_settings,
+                proba_with_background=FLAGS.proba_with_background, background_volume_range=FLAGS.background_volume,
+                time_shift=time_shift_samples, mode="training", sess=sess
+            )
 
+            feed_dict = {
+                trainer.fingerprint_input: train_fingerprints,
+                trainer.labels: labels,
+                trainer.lr: lr,
+                trainer.keep_prob: 0.5
+            }
 
+            train_summary, train_accuracy, _, _ = \
+                sess.run([trainer.merged_summries, trainer.acc, trainer.train_op, trainer.increment_global_step],
+                         feed_dict=feed_dict)
 
-
-
-
-
+            # todo: the rest part is summary of metrics, add to log and print.
+            # todo: It's a little boring and not worth carrying on.
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
