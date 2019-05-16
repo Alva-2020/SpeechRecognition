@@ -4,9 +4,9 @@
 import os
 import glob
 import tqdm
+import textgrid
 from collections import defaultdict
 from project_trial import constant
-from project_trial.utils import textgrid
 from typing import Dict, List, Tuple
 
 data_path = constant.PATH
