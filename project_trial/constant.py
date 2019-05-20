@@ -35,7 +35,7 @@ noise噪声:
     - 1: 噪声
     - -1: 无法识别
 """
-
+MAX_TIME = 5  # 最大时间长度
 SPACE_INDEX = 0  # ctc loss的space
 SEP_INDEX = 1  # 真实的断句符
 N_CLASSES = 1468  # pinyin(1430) + numbers(10) + letters(26) + <SPACE> + <SEP>
@@ -44,7 +44,7 @@ N_CLASSES = 1468  # pinyin(1430) + numbers(10) + letters(26) + <SPACE> + <SEP>
 def _get_total_labels() -> Dict[str, int]:
     """生成全部 字符到 label的 词典"""
     all_pinyin = list(set(" ".join(Pinyin().dict.values()).replace("\n", "").lower().split()))  # 1430
-    all_numbers = list(range(10))
+    all_numbers = [str(n) for n in range(10)]
     all_letters = [chr(x) for x in range(ord("a"), ord("z") + 1)]
     res = {x: i + 2 for i, x in enumerate(all_numbers + all_letters + all_pinyin)}  # 10 + 26 + 1430
     res[" "] = SEP_INDEX  # 增加空格

@@ -1,6 +1,6 @@
 
 import numpy as np
-from project_trial.constant import LABEL_MAP
+from project_trial.constant import LABEL_MAP, MAX_TIME
 from project_trial.preprocessing.data_generator import SPLITTER
 from librosa.feature import mfcc
 from scipy.io import wavfile
@@ -16,8 +16,19 @@ def _get_audio_feature(audio_file: str) -> np.ndarray:
     :param audio_file: 音频文件地址
     :return: [n_mfcc, time]
     """
-    sample_rate, audio = wavfile.read(audio_file)
-    feature = mfcc(y=audio.astype(np.float32), sr=sample_rate, n_mfcc=N_FEATURES)  # [n_mfcc, time]
+    sample_rate, data = wavfile.read(audio_file)
+    if data.dtype == np.dtype("int16"):  # 16bit
+        samples = data / (2 ** 15)  # 32768
+    elif data.dtype == np.dtype("int32"):  # 32bit
+        samples = data / (2 ** 31)  # 2147483648
+    elif data.dtype == np.dtype("uint8"):  # 8bit
+        samples = data / 255
+    else:
+        raise Exception("unknow type of wav file")
+    if len(samples) < MAX_TIME * sample_rate:  # padding
+        samples = np.pad(samples, [(0, MAX_TIME * sample_rate - len(samples))], mode="constant", constant_values=0.0)
+
+    feature = mfcc(y=samples.astype(np.float32), sr=sample_rate, n_mfcc=N_FEATURES)  # [n_mfcc, time]
     feature = (feature - np.mean(feature)) / np.std(feature)  # normalize
     return feature
 
@@ -34,10 +45,27 @@ def _get_audio_label(label: str, index: int=0):
     values = []
     i = 1
     for w in label.split(SPLITTER):
-        indices.append((index, i))
-        values.append(LABEL_MAP[w])
-        i += 2
+        try:
+            values.append(LABEL_MAP[w])
+            indices.append((index, i))
+            i += 2
+        except KeyError:
+            for w_ in w:  # 连写的字母或数字
+                values.append(LABEL_MAP[w_])
+                indices.append((index, i))
+                i += 2
     return indices, values  # indices and values must have same length
+
+
+def get_expected_label_length(label: str):
+    """给定 encode前的label，输出其 encode后的预期长度"""
+    length = 0
+    for w in label.split(SPLITTER):
+        if w in LABEL_MAP:
+            length += 1
+        else:
+            length += len(w)
+    return length * 2 + 1
 
 
 def get_batch(audio_files: List[str], labels: List[str], batch_size: int):

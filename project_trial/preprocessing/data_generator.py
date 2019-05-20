@@ -5,7 +5,7 @@ import random
 import numpy as np
 import pandas as pd
 from xpinyin import Pinyin
-from project_trial.constant import MERGED_FILE, PURED_FILE, TRAIN_AUDIO_PATH, TEST_AUDIO_PATH, PATH, clear_path
+from project_trial.constant import MERGED_FILE, PURED_FILE, TRAIN_AUDIO_PATH, TEST_AUDIO_PATH, PATH, clear_path, MAX_TIME
 from _utils.nlp.u_nlp import DBC2SBC
 from scipy.io import wavfile
 from tqdm import tqdm
@@ -36,7 +36,7 @@ def gen_pinyin(content: str) -> str:
 def generate_data(source_file: str) -> pd.DataFrame:
     df = pd.read_table(source_file)
     df.fillna(value={"content": ""}, inplace=True)
-    cond = (df["role"] == 0) & (df["noise"] == 0) & (df["content"].str.len() > 1)
+    cond = (df["role"] == 0) & (df["noise"] == 0) & (df["content"].str.len() > 1) & (df["xmax"] - df["xmin"] <= MAX_TIME)
     user_df = df[cond].copy()
     user_df["pured_content"] = user_df["content"].progress_apply(treat_content)
     user_df = user_df[user_df["pured_content"].str.len() > 0]

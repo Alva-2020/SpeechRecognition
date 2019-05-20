@@ -1,9 +1,11 @@
 
+"""建立CTC 训练模型"""
+
 import tensorflow as tf
 
 
 class Model(object):
-    def __init__(self, n_features: int, n_rnn_units: int, n_rnn_layers: int, n_classes: int,
+    def __init__(self, *, n_features: int, n_rnn_units: int, n_rnn_layers: int, n_classes: int,
                  bidirectional: bool=False, learning_rate: float=0.01, momentum: float=0.9):
         self.n_features = n_features
         self.n_rnn_units = n_rnn_units
@@ -94,4 +96,5 @@ class Model(object):
                 self.ler = tf.reduce_mean(tf.edit_distance(tf.cast(self.result, dtype=tf.int32), self.labels))
 
             self.init = tf.global_variables_initializer()
+            self.saver = tf.train.Saver(max_to_keep=5)
         return graph
