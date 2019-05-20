@@ -13,7 +13,7 @@ n_epochs = 800
 n_rnn_units = 40
 n_rnn_layers = 1
 batch_size = 64
-initial_learning_rate = 0.01
+initial_learning_rate = 0.05
 momentum = 0.9
 ckpt_path = os.path.join(PATH, "model")
 
@@ -27,7 +27,7 @@ def get_audio_infos(id_mapping: Dict[int, str], partition: str="train") -> (List
     audio_path = TRAIN_AUDIO_PATH if partition == "train" else TEST_AUDIO_PATH
     audio_files, labels = [], []
     max_label_len = 0
-    for file in os.listdir(audio_path):
+    for file in os.listdir(audio_path)[:1000]:
         audio_files.append(os.path.join(audio_path, file))
         filename, _ = os.path.splitext(file)
         label = id_mapping[int(filename)]
@@ -45,7 +45,7 @@ def build_session(graph):
 
 
 def decoded(encoded_values: List[int]):
-    res = ""
+    res = []
     for w in encoded_values:
         if w == SPACE_INDEX:
             char = ""
@@ -53,8 +53,8 @@ def decoded(encoded_values: List[int]):
             char = " "
         else:
             char = INVERSE_LABEL_MAP.get(w, "")
-        res += char
-    return res
+        res.append(char)
+    return "-".join(res)
 
 
 def eval_test(test_audio_files: List[str], test_labels: List[str], max_label_len: int, model: Model):
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     total_num = len(train_audio_files)
 
     model = Model(
-        n_features=N_FEATURES, n_rnn_units=n_rnn_units, n_rnn_layers=n_rnn_layers, n_classes=N_CLASSES,
+        n_features=N_FEATURES, n_rnn_units=n_rnn_units, n_rnn_layers=n_rnn_layers, n_classes=N_CLASSES + 1,  # for null label
         bidirectional=True, learning_rate=initial_learning_rate, momentum=momentum
     )
 
@@ -128,7 +128,7 @@ if __name__ == "__main__":
             train_ler /= total_num
             log = "Epoch {} / {}, train cost: {:.4f}, train ler: {:.4f}, time using: {:.2f}"
             print(log.format(epoch + 1, n_epochs, train_cost, train_ler, end - start))
-            eval_test(test_audio_files, test_labels, max_label_len_test, model)
 
             if epoch % 10 == 0 and epoch != 0:
+                eval_test(test_audio_files, test_labels, max_label_len_test, model)
                 model.saver.save(sess, save_path=os.path.join(ckpt_path, "model.ckpt"), global_step=epoch)
