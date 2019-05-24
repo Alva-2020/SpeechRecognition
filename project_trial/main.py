@@ -1,5 +1,6 @@
 
 import os
+import numpy as np
 import time
 import sys
 import platform
@@ -88,7 +89,8 @@ def eval_test(test_audio_files: List[str], test_labels: List[str], max_label_len
         model.labels: (y_indices_batch, y_values_batch, (1, max_label_len))
     }
     values, summary = sess.run([model.result, model.merge_summary], feed_dict=feed_dict)
-    decoded_str = decoded(values[0])  # # single element list: element is indice, value, shape for tf 11
+    values = np.asscalar(values)
+    decoded_str = decoded(values) 
 
     print("*** Test Eval ***")
     print(test_log)
