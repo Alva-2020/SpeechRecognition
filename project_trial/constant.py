@@ -59,7 +59,7 @@ INVERSE_LABEL_MAP = {v: k for k, v in LABEL_MAP.items()}  # 反转mapping {label
 
 
 def clear_path(path: str):
-    # os.removedirs(path)
-    # os.makedirs(path)
-    for x in os.listdir(path):
-        os.remove(os.path.join(path, x))
+    os.removedirs(path)
+    os.makedirs(path)
+    # for x in os.listdir(path):
+    #     os.remove(os.path.join(path, x))
