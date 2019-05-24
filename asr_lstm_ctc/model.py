@@ -17,22 +17,22 @@ class Model(object):
     def _inference(self, inputs, seq_len, num_hidden, num_layers):
         rnn_init = tf.random_normal_initializer(stddev=0.1)
         if self.bidirectional:
-            cell_fw = tf.nn.rnn_cell.LSTMCell(num_units=self.n_rnn_units, initializer=rnn_init,
+            cell_fw = tf.nn.rnn_cell.LSTMCell(num_units=num_hidden, initializer=rnn_init,
                                               state_is_tuple=True)
-            cell_bw = tf.nn.rnn_cell.LSTMCell(num_units=self.n_rnn_units, initializer=rnn_init,
+            cell_bw = tf.nn.rnn_cell.LSTMCell(num_units=num_hidden, initializer=rnn_init,
                                               state_is_tuple=True)
-            cells_fw = tf.nn.rnn_cell.MultiRNNCell(cells=[cell_fw] * self.n_rnn_layers)
-            cells_bw = tf.nn.rnn_cell.MultiRNNCell(cells=[cell_bw] * self.n_rnn_layers)
+            cells_fw = tf.nn.rnn_cell.MultiRNNCell(cells=[cell_fw] * num_layers)
+            cells_bw = tf.nn.rnn_cell.MultiRNNCell(cells=[cell_bw] * num_layers)
 
             # fw_outputs, bw_outputs: [batch_size, max_step, n_rnn_units]
             (fw_outputs, bw_outputs), (_, _) = tf.nn.bidirectional_dynamic_rnn(
                 cell_fw=cells_fw, cell_bw=cells_bw,
-                inputs=self.inputs, sequence_length=self.seq_len,
+                inputs=inputs, sequence_length=seq_len,
                 time_major=False, dtype=tf.float32)
             # [batch_size, max_step, 2 * n_rnn_units]
             outputs = tf.concat([fw_outputs, bw_outputs], axis=2)
             # [batch_size * max_step, 2 * n_rnn_units]
-            outputs = tf.reshape(outputs, shape=[-1, 2 * self.n_rnn_units])
+            outputs = tf.reshape(outputs, shape=[-1, 2 * num_hidden])
 
             # Another RNN API
             # cell_fw = tf.contrib.rnn.LSTMCell(
@@ -51,21 +51,20 @@ class Model(object):
             # )
             # outputs = tf.reshape(outputs, [-1, num_hidden])
         else:
-            cell = tf.nn.rnn_cell.LSTMCell(num_units=self.n_rnn_units, initializer=rnn_init,
+            cell = tf.nn.rnn_cell.LSTMCell(num_units=num_hidden, initializer=rnn_init,
                                            state_is_tuple=True)
-            cells = [cell] * self.n_rnn_layers
+            cells = [cell] * num_layers
             stack = tf.nn.rnn_cell.MultiRNNCell(cells=cells)
             # [batch_size, max_step, n_rnn_units]
             outputs, _ = tf.nn.dynamic_rnn(
-                cell=stack, inputs=self.inputs, sequence_length=self.seq_len,
-                time_major=False, dtype=tf.float32)
+                cell=stack, inputs=inputs, sequence_length=seq_len, time_major=False, dtype=tf.float32)
             # [batch_size * max_step, n_rnn_units]
-            outputs = tf.reshape(outputs, shape=[-1, self.n_rnn_units])
+            outputs = tf.reshape(outputs, shape=[-1, num_hidden])
 
         # [batch_size * max_step, n_classes]
         logits = tf.layers.dense(inputs=outputs, units=self.n_classes, activation=None)
         # [batch_size, max_step, n_classes]
-        logits = tf.reshape(logits, shape=[tf.shape(self.inputs)[0], -1, self.n_classes])
+        logits = tf.reshape(logits, shape=[tf.shape(inputs)[0], -1, self.n_classes])
         # [max_step, batch_size, n_classes]
         logits = tf.transpose(logits, [1, 0, 2])  # for ctc input requirement
 

@@ -1,6 +1,10 @@
 
 import os
 import time
+import sys
+import platform
+sys.path.append("F:/Code projects/Python/SpeechRecognition" if platform.system().lower() == "windows"
+                else "/data/zhaochengming/projects/SpeechRecognition")
 import pandas as pd
 import tensorflow as tf
 from _utils.tf.util import get_ckpt_global_step
@@ -16,6 +20,8 @@ batch_size = 64
 initial_learning_rate = 0.05
 momentum = 0.9
 ckpt_path = os.path.join(PATH, "model")
+os.makedirs(ckpt_path, exist_ok=True)
+log_path = os.path.join(PATH, "log")
 
 
 def get_audio_id_mapping():
@@ -81,13 +87,14 @@ def eval_test(test_audio_files: List[str], test_labels: List[str], max_label_len
         model.seq_len: seq_len_batch,
         model.labels: (y_indices_batch, y_values_batch, (1, max_label_len))
     }
-    values = sess.run([model.result], feed_dict=feed_dict)
+    values, summary = sess.run([model.result, model.merge_summary], feed_dict=feed_dict)
     decoded_str = decoded(values[0][1])  # # single element list: element is indice, value, shape
 
     print("*** Test Eval ***")
     print(test_log)
     print("%s:  %s" % (test_labels[0], decoded_str))
     print("\n\n")
+    return summary
 
 
 if __name__ == "__main__":
@@ -102,13 +109,17 @@ if __name__ == "__main__":
     )
 
     with build_session(model.graph) as sess:
+        train_writer = tf.summary.FileWriter(logdir=os.path.join(log_path, "train"), graph=sess.graph)
+        test_writer = tf.summary.FileWriter(logdir=os.path.join(log_path, "test"))
         ckpt_state = tf.train.get_checkpoint_state(ckpt_path)
+
         if ckpt_state:
             model.saver.restore(sess, ckpt_state.model_checkpoint_path)
             old_epoch = get_ckpt_global_step(ckpt_state)
         else:
             sess.run(model.init)
             old_epoch = 0
+        iterations = 0
         for epoch in range(old_epoch, n_epochs):
             train_cost, train_ler = 0., 0.
             start = time.time()
@@ -120,7 +131,10 @@ if __name__ == "__main__":
                     model.labels: (y_indices_batch, y_values_batch, (_batch_size, max_label_len_train))
                 }
 
-                batch_cost, _, ler = sess.run([model.loss, model.train_op, model.ler], feed_dict=feed_dict)
+                batch_cost, _, ler, train_summary =\
+                    sess.run([model.loss, model.train_op, model.ler, model.merge_summary], feed_dict=feed_dict)
+                iterations += 1
+                train_writer.add_summary(train_summary, iterations)
                 train_cost += batch_cost * _batch_size
                 train_ler += ler * _batch_size
             end = time.time()
@@ -130,5 +144,9 @@ if __name__ == "__main__":
             print(log.format(epoch + 1, n_epochs, train_cost, train_ler, end - start))
 
             if epoch % 10 == 0 and epoch != 0:
-                eval_test(test_audio_files, test_labels, max_label_len_test, model)
+                test_summary = eval_test(test_audio_files, test_labels, max_label_len_test, model)
+                test_writer.add_summary(test_summary, epoch)
                 model.saver.save(sess, save_path=os.path.join(ckpt_path, "model.ckpt"), global_step=epoch)
+    train_writer.close()
+    test_writer.close()
+

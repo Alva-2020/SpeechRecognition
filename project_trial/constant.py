@@ -6,10 +6,13 @@ Created on Wed May 15 19:40:37 2019
 """
 
 import os
+import platform
 from xpinyin import Pinyin
 from typing import Dict
 
-PATH = "F:/for learn/asr_trial_data/"  # 原始数据存放地址
+system = platform.system().lower()
+PATH = "F:/for learn/asr_trial_data/" if system == "windows" else "/data/zhaochengming/data/asr_trial_data/"  # 原始数据存放地址
+
 SAVE_PATH = os.path.join(PATH, "files")  # 处理后的数据存放地址
 FRAGMENTED_AUDIO_PATH = os.path.join(PATH, "fragmented_audios")  # 存放切片语音数据的位置，与文本对应
 TRAIN_AUDIO_PATH = os.path.join(FRAGMENTED_AUDIO_PATH, "train")  # 训练数据存放位置

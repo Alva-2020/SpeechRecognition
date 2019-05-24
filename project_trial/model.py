@@ -89,12 +89,15 @@ class Model(object):
                 ctc_loss = tf.nn.ctc_loss(labels=self.labels, inputs=logits, sequence_length=self.seq_len)  # [batch_size]
                 self.loss = tf.reduce_mean(ctc_loss)
                 self.train_op = tf.train.MomentumOptimizer(learning_rate=self.lr, momentum=self.momentum).minimize(self.loss)
+                tf.summary.scalar(name="ctc_loss", tensor=self.loss)
             with tf.name_scope("decode"):
                 # decode: single element list    decode[0]: sparse tensor
                 decode, _ = tf.nn.ctc_greedy_decoder(inputs=logits, sequence_length=self.seq_len, merge_repeated=True)
                 self.result = decode[0]
                 self.ler = tf.reduce_mean(tf.edit_distance(tf.cast(self.result, dtype=tf.int32), self.labels))
+                tf.summary.scalar(name="ler", tensor=self.ler)
 
             self.init = tf.global_variables_initializer()
             self.saver = tf.train.Saver(max_to_keep=5)
+            self.merge_summary = tf.summary.merge(tf.get_collection(tf.GraphKeys.SUMMARIES))
         return graph
