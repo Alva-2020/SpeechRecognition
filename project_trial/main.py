@@ -13,7 +13,7 @@ from project_trial.input_data import N_FEATURES, get_batch, get_expected_label_l
 from project_trial.model import Model
 from typing import Dict, List
 
-n_epochs = 800
+n_epochs = 10000
 n_rnn_units = 40
 n_rnn_layers = 1
 batch_size = 64
@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
             if epoch % 10 == 0 and epoch != 0:
                 test_summary = eval_test(test_audio_files, test_labels, max_label_len_test, model)
-                test_writer.add_summary(test_summary, epoch)
+                test_writer.add_summary(test_summary, iterations)
                 model.saver.save(sess, save_path=os.path.join(ckpt_path, "model.ckpt"), global_step=epoch)
     train_writer.close()
     test_writer.close()
