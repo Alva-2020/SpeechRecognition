@@ -88,7 +88,7 @@ def eval_test(test_audio_files: List[str], test_labels: List[str], max_label_len
         model.labels: (y_indices_batch, y_values_batch, (1, max_label_len))
     }
     values, summary = sess.run([model.result, model.merge_summary], feed_dict=feed_dict)
-    decoded_str = decoded(values[0][1])  # # single element list: element is indice, value, shape
+    decoded_str = decoded(values[0])  # # single element list: element is indice, value, shape for tf 11
 
     print("*** Test Eval ***")
     print(test_log)
