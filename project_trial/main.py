@@ -89,12 +89,15 @@ def eval_test(test_audio_files: List[str], test_labels: List[str], max_label_len
         model.labels: (y_indices_batch, y_values_batch, (1, max_label_len))
     }
     values, summary = sess.run([model.result, model.merge_summary], feed_dict=feed_dict)
-    decoded_str = decoded(values[0])
-
-    print("*** Test Eval ***")
-    print(test_log)
-    print("%s:  %s" % (test_labels[0], decoded_str))
-    print("\n\n")
+    values = values[0]
+    try:
+        decoded_str = decoded(values[1])
+        print("*** Test Eval ***")
+        print(test_log)
+        print("%s:  %s" % (test_labels[0], decoded_str))
+        print("\n\n")
+    except IndexError:
+        pass
     return summary
 
 
