@@ -7,6 +7,7 @@ Created on Wed May 15 19:40:37 2019
 
 import os
 import platform
+import shutil
 from xpinyin import Pinyin
 from typing import Dict
 
@@ -59,7 +60,7 @@ INVERSE_LABEL_MAP = {v: k for k, v in LABEL_MAP.items()}  # 反转mapping {label
 
 
 def clear_path(path: str):
-    os.removedirs(path)
+    shutil.rmtree(path)
     os.makedirs(path)
     # for x in os.listdir(path):
     #     os.remove(os.path.join(path, x))
