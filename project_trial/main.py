@@ -9,7 +9,7 @@ sys.path.append("F:/Code projects/Python/SpeechRecognition" if platform.system()
 import pandas as pd
 import tensorflow as tf
 from _utils.tf.util import get_ckpt_global_step
-from project_trial.constant import PATH, PURED_FILE, TRAIN_AUDIO_PATH, TEST_AUDIO_PATH, INVERSE_LABEL_MAP, N_CLASSES, SPACE_INDEX, SEP_INDEX
+from project_trial.constant import PATH, PURED_FILE, TRAIN_AUDIO_PATH, TEST_AUDIO_PATH, INVERSE_LABEL_MAP, N_CLASSES, SPACE_INDEX, SEP_INDEX, clear_path
 from project_trial.input_data import N_FEATURES, get_batch, get_expected_label_length
 from project_trial.model import Model
 from typing import Dict, List
@@ -23,6 +23,7 @@ momentum = 0.9
 ckpt_path = os.path.join(PATH, "model")
 os.makedirs(ckpt_path, exist_ok=True)
 log_path = os.path.join(PATH, "log")
+clear_path(log_path)
 
 
 def get_audio_id_mapping():
@@ -90,7 +91,7 @@ def eval_test(test_audio_files: List[str], test_labels: List[str], max_label_len
     }
     values, summary = sess.run([model.result, model.merge_summary], feed_dict=feed_dict)
     values = np.asscalar(values)
-    decoded_str = decoded(values) 
+    decoded_str = decoded(values)
 
     print("*** Test Eval ***")
     print(test_log)
