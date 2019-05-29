@@ -1,11 +1,15 @@
 
 
 import os
+import platform
 from pypinyin import Style, pinyin_dict
 from pypinyin.core import to_fixed
 from typing import Dict
 
-DATA_SOURCE_DIR = r"F:\for learn\data_source\Speech"
+system = platform.system().lower()
+DATA_SOURCE_DIR = r"F:\for learn\data_source\Speech" if system == "windows"\
+    else "/data/zhaochengming/data/data_source/Speech"
+
 AM_LOG_DIR = os.path.join(os.path.dirname(__file__), "AM_Model_LOG")
 AM_MODEL_DIR = os.path.join(AM_LOG_DIR, "am_model.h5")
 
