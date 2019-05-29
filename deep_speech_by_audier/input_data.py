@@ -1,5 +1,4 @@
 
-import os
 import numpy as np
 import pandas as pd
 from scipy.fftpack import fft
@@ -13,13 +12,12 @@ from typing import Optional, List, Dict
 
 BatchData = namedtuple("BatchData", ["inputs", "labels", "input_length", "label_length"])
 Outputs = namedtuple("Outputs", ["ctc"])
-N_FEATURES = 26
 
 
 # mfcc 特征
-def compute_mfcc(file):
+def compute_mfcc(file, n_features: int=26):
     sample_rate, audio = wavfile.read(file)
-    mfcc_feat = mfcc(signal=audio, samplerate=sample_rate, numcep=N_FEATURES)  # shape: [n_frames, numcep]
+    mfcc_feat = mfcc(signal=audio, samplerate=sample_rate, numcep=n_features)  # shape: [n_frames, numcep]
     return mfcc_feat  # shape: [n_frames, numcep]
 
 
@@ -44,57 +42,54 @@ def compute_fbank(file, time_window=400, time_step: int = 10):
 
 
 class DataGenerator(object):
-    def __init__(self, data_source: str, pinyin_sep: str, data_type: str, is_shuffle: bool=False, data_length: Optional[int]=None):
+    def __init__(self, data_source: str, pinyin_sep: str, data_type: str, n_features: int,
+                 is_shuffle: bool=False, data_length: Optional[int]=None, vocab: Optional[Dict[str, int]]=None):
         """
         :param data_source: 结构化标注数据源位置
         :param data_type: 指明取哪部分，[train, test, dev]
         :param is_shuffle: 是否shuffle
         :param data_length: 限制读入的数据条数
         """
-        self.data: pd.DataFrame = pd.read_csv(
+        self.data = pd.read_csv(
             data_source, sep="\t", encoding="utf-8", header=None,
             names=["src", "content", "pinyin", "data_type"]
         ).query("data_type == %s" % data_type)
 
-        if data_length is not None:
+        self.n_features = n_features
+
+        if data_length is not None and data_length > 0:
             self.data: pd.DataFrame = self.data[: data_length]
 
         self.is_shuffle = is_shuffle
         self.png_vocab, self.han_vocab = [], []
-        self.am_vocab: Dict[str, int] = self._make_am_vocab(self.data["pinyin"], sep=pinyin_sep)
+        self.am_vocab: Dict[str, int] = vocab if vocab else self._make_am_vocab(self.data["pinyin"], sep=pinyin_sep)
         self.pinyin_sep = pinyin_sep
 
     def get_am_batch(self, feature_type: str, batch_size: int=64):
         """ 生成训练数据 """
         self.data: pd.DataFrame = shuffle(self.data) if self.is_shuffle else self.data
         wav_data_list, label_data_list = [], []
-        for _, row in self.data.iterrows():
-            features = compute_fbank(row["src"], time_window=400, time_step=10) if feature_type == "fbank" else compute_mfcc(row["src"])
-            pad_num = (len(features) // 8 + 1) * 8 - len(features)
-            features = np.pad(features, ((0, pad_num), (0, 0)), mode="constant", constant_values=0.)
-            label = [self.am_vocab[pny] for pny in row["pinyin"].split(self.pinyin_sep)]
-            label_ctc_len = self._ctc_len(label)
-            if len(features) // 8 >= label_ctc_len:
-                wav_data_list.append(features)
-                label_data_list.append(label)
+        while True:  # 持续输出
+            for _, row in self.data.iterrows():
+                features = compute_fbank(row["src"], time_window=self.n_features * 2, time_step=10)\
+                    if feature_type == "fbank" else compute_mfcc(row["src"], n_features=self.n_features)
+                pad_num = (len(features) // 8 + 1) * 8 - len(features)
+                features = np.pad(features, ((0, pad_num), (0, 0)), mode="constant", constant_values=0.)
+                label = [self.am_vocab[pny] for pny in row["pinyin"].split(self.pinyin_sep)]
+                label_ctc_len = self._ctc_len(label)
+                if len(features) // 8 >= label_ctc_len:
+                    wav_data_list.append(features)
+                    label_data_list.append(label)
 
-                if len(wav_data_list) == batch_size:
-                    pad_wav_data, input_length = self._wav_padding(wav_data_list)
-                    pad_label_data, label_length = self._label_padding(label_data_list)
-                    inputs = BatchData(
-                        inputs=pad_wav_data, labels=pad_label_data,
-                        input_length=input_length, label_length=label_length)
-                    outputs = Outputs(ctc=np.zeros(len(pad_wav_data), ))
-                    yield inputs, outputs
-                    wav_data_list, label_data_list = [], []
-        if wav_data_list:
-            pad_wav_data, input_length = self._wav_padding(wav_data_list)
-            pad_label_data, label_length = self._label_padding(label_data_list)
-            inputs = BatchData(
-                inputs=pad_wav_data, labels=pad_label_data,
-                input_length=input_length, label_length=label_length)
-            outputs = Outputs(ctc=np.zeros(len(pad_wav_data), ))
-            yield inputs, outputs
+                    if len(wav_data_list) == batch_size:
+                        pad_wav_data, input_length = self._wav_padding(wav_data_list)
+                        pad_label_data, label_length = self._label_padding(label_data_list)
+                        inputs = BatchData(
+                            inputs=pad_wav_data, labels=pad_label_data,
+                            input_length=input_length, label_length=label_length)
+                        outputs = Outputs(ctc=np.zeros(len(pad_wav_data), ))
+                        yield inputs, outputs  # 一个空的输出用来占位满足keras.Model的fit_generator 输入API
+                        wav_data_list, label_data_list = [], []
 
     @staticmethod
     def _make_am_vocab(pny_data_list, sep=" ") -> Dict[str, int]:
@@ -130,15 +125,3 @@ class DataGenerator(object):
             if label[i] == label[i + 1]:
                 add_len += 1
         return label_len + add_len
-
-
-def decode_ctc(num_result, id2word):
-    result = num_result[:, :, :]
-
-
-
-
-
-
-
-

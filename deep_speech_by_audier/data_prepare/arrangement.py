@@ -1,11 +1,15 @@
 """ 操作原始数据集，生成可用的结构化标注文件 """
 
 import os
+import sys
 import re
 import glob
 import tqdm
 import argparse
 from typing import Optional
+
+sys.path.append("F:/Code projects/Python/SpeechRecognition")
+from deep_speech_by_audier.constant import DATA_SOURCE_DIR
 
 HAN_PATTERN = re.compile('[\u4e00-\u9fa5]')  # 汉字
 
@@ -70,10 +74,10 @@ def transform(args):
         if files:
             correction_file, *output_file = files
             if not output_file:
-                output_file = os.path.join(source_dir, "thchs30.txt")
+                output_file = os.path.join(DATA_SOURCE_DIR, "labeled_data.txt")
         else:
             correction_file = os.path.join(source_dir, "pinyin_correction.txt")
-            output_file = os.path.join(source_dir, "thchs30.txt")
+            output_file = os.path.join(DATA_SOURCE_DIR, "labeled_data.txt")
         _transform_thchs30(source_dir, output_file, correction_file)
 
 
