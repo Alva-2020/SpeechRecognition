@@ -109,7 +109,6 @@ class AcousticModel(object):
         #     self.inference_model = DFSMN(vocab_size, n_features)
         else:
             self.inference_model = BiGRU(vocab_size, n_features)
-        self.inference_model.summary()
         self.lr = learning_rate
         self._build_model()
         if is_training:
