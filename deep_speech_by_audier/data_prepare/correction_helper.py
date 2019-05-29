@@ -70,7 +70,7 @@ with open(os.path.join(path, "pinyin_correction.txt"), "w", encoding="utf-8") as
                     if pny.replace("5", "4") in target_pnys:
                         treated = True
                         f.write("%s\t%s\t%s\n" % (word, pny, pny.replace("5", "4")))
-                    elif pny.replace("5", "1") in target_pnys:f,
+                    elif pny.replace("5", "1") in target_pnys:
                         treated = True
                         f.write("%s\t%s\t%s\n" % (word, pny, pny.replace("5", "1")))
         if not treated:

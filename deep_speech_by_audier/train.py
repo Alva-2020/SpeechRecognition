@@ -1,7 +1,7 @@
 
 import os
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+sys.path.append("/data/zhaochengming/projects/SpeechRecognition")
 from tensorflow.python.keras.callbacks import ModelCheckpoint
 from deep_speech_by_audier.constant import make_vocab, DATA_SOURCE_DIR, AM_LOG_DIR, AM_MODEL_DIR
 from deep_speech_by_audier.input_data import DataGenerator
