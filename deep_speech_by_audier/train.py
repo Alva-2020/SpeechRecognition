@@ -11,6 +11,7 @@ from deep_speech_by_audier.input_data import DataGenerator
 from deep_speech_by_audier.model.speech import AcousticModel
 from typing import Dict
 
+
 PNY2ID: Dict[str, int] = make_vocab()
 ID2PNY: Dict[int, str] = {id_: pny for pny, id_ in PNY2ID.items()}
 SHUFFLE = True
@@ -23,12 +24,12 @@ N_EPOCH = 10
 DATA_SOURCE = os.path.join(DATA_SOURCE_DIR, "labeled_data.txt")
 
 TRAIN_DATA = DataGenerator(
-    data_source=DATA_SOURCE_DIR, pinyin_sep="-", data_type="train",
+    data_source=DATA_SOURCE, pinyin_sep="-", data_type="train",
     is_shuffle=SHUFFLE, data_length=None, vocab=PNY2ID
 )
 
 DEV_DATA = DataGenerator(
-    data_source=DATA_SOURCE_DIR, pinyin_sep="-", data_type="dev",
+    data_source=DATA_SOURCE, pinyin_sep="-", data_type="dev",
     is_shuffle=SHUFFLE, data_length=10, vocab=PNY2ID
 )
 
