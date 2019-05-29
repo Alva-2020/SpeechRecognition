@@ -7,12 +7,13 @@ from tensorflow.python.keras import backend as K
 
 
 class DFCNN(Model):
-    def __init__(self, n_classes: int):
+    def __init__(self, n_classes: int, n_features: int):
         super(DFCNN, self).__init__()  # tf 1.11 no need for `inputs` and `outputs`
         self.n_classes = n_classes
+        self.n_features = n_features
 
     def call(self, inputs, mask=None):
-        h = self.cnn_cell(32, inputs, pool=True)
+        h = self.cnn_cell(32, inputs, pool=True, input_shape=(None, self.n_features, 1))
         h = self.cnn_cell(64, h, pool=True)
         h = self.cnn_cell(128, h, pool=True)
         h = self.cnn_cell(128, h, pool=False)
@@ -24,9 +25,9 @@ class DFCNN(Model):
         return self.dense(self.n_classes, activation="softmax")(h)
 
     @staticmethod
-    def conv2d(size):
+    def conv2d(size, **kwargs):
         return Conv2D(filters=size, kernel_size=(3, 3), use_bias=True, activation="relu", padding="same",
-                      kernel_initializer="he_normal")
+                      kernel_initializer="he_normal", **kwargs)
     @staticmethod
     def norm(x):
         return BatchNormalization(axis=-1)(x)
@@ -36,11 +37,11 @@ class DFCNN(Model):
         return MaxPooling2D(pool_size=(2, 2), strides=None, padding="valid")(x)
 
     @staticmethod
-    def dense(units, activation="relu"):
+    def dense(units, activation="relu", **kwargs):
         return Dense(units=units, activation=activation, use_bias=True, kernel_initializer="he_normal")
 
-    def cnn_cell(self, size, x, pool=True):
-        x = self.norm(self.conv2d(size)(x))
+    def cnn_cell(self, size, x, pool=True, **kwargs):
+        x = self.norm(self.conv2d(size, **kwargs)(x))
         x = self.norm(self.conv2d(size)(x))
         if pool:
             x = self.maxpool(x)
@@ -107,6 +108,7 @@ class AcousticModel(object):
         #     self.inference_model = DFSMN(vocab_size)
         else:
             self.inference_model = BiGRU(vocab_size)
+        self.inference_model.summary()
         self.lr = learning_rate
         self._build_model()
         if is_training:
