@@ -53,12 +53,13 @@ class DFSMN(Model):
 
 
 class BiGRU(Model):
-    def __init__(self, n_classes: int):
+    def __init__(self, n_classes: int, n_features: int):
         super(BiGRU, self).__init__()
         self.n_classes = n_classes
+        self.n_features = n_features
 
     def call(self, inputs, mask=None):
-        h = Flatten()(inputs)
+        h = Flatten(input_shape=(None, self.n_features, 1))(inputs)
         h = self.dense(512, h)
         h = self.dense(512, h)
         h = self.bi_gru(512, h)
@@ -103,11 +104,11 @@ class AcousticModel(object):
         self.n_features = n_features
 
         if inference_model.upper() == "DFCNN":
-            self.inference_model = DFCNN(vocab_size)
+            self.inference_model = DFCNN(vocab_size, n_features)
         # elif inference_model.upper() == "DFSMN":
-        #     self.inference_model = DFSMN(vocab_size)
+        #     self.inference_model = DFSMN(vocab_size, n_features)
         else:
-            self.inference_model = BiGRU(vocab_size)
+            self.inference_model = BiGRU(vocab_size, n_features)
         self.inference_model.summary()
         self.lr = learning_rate
         self._build_model()
