@@ -108,7 +108,7 @@ class AcousticModel(object):
         else:
             self.inference_model = BiGRU(vocab_size)
         self.lr = learning_rate
-
+        self._build_model()
         if is_training:
             self._opt_init()
 
