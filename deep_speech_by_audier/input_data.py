@@ -51,7 +51,7 @@ class DataGenerator(object):
         :param data_length: 限制读入的数据条数
         """
         self.data = pd.read_csv(
-            data_source, sep="\t", encoding="utf-8", header=None,
+            data_source, sep="\t", encoding="utf-8", header=None, engine="python",
             names=["src", "content", "pinyin", "data_type"]
         ).query("data_type == %s" % data_type)
 
