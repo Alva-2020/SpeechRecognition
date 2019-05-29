@@ -42,7 +42,7 @@ def compute_fbank(file, time_window=400, time_step: int = 10):
 
 
 class DataGenerator(object):
-    def __init__(self, data_source: str, pinyin_sep: str, data_type: str, n_features: int,
+    def __init__(self, data_source: str, pinyin_sep: str, data_type: str,
                  is_shuffle: bool=False, data_length: Optional[int]=None, vocab: Optional[Dict[str, int]]=None):
         """
         :param data_source: 结构化标注数据源位置
@@ -55,8 +55,6 @@ class DataGenerator(object):
             names=["src", "content", "pinyin", "data_type"]
         ).query("data_type == %s" % data_type)
 
-        self.n_features = n_features
-
         if data_length is not None and data_length > 0:
             self.data: pd.DataFrame = self.data[: data_length]
 
@@ -65,14 +63,14 @@ class DataGenerator(object):
         self.am_vocab: Dict[str, int] = vocab if vocab else self._make_am_vocab(self.data["pinyin"], sep=pinyin_sep)
         self.pinyin_sep = pinyin_sep
 
-    def get_am_batch(self, feature_type: str, batch_size: int=64):
+    def get_am_batch(self, feature_type: str, n_features: int, batch_size: int=64):
         """ 生成训练数据 """
         self.data: pd.DataFrame = shuffle(self.data) if self.is_shuffle else self.data
         wav_data_list, label_data_list = [], []
         while True:  # 持续输出
             for _, row in self.data.iterrows():
-                features = compute_fbank(row["src"], time_window=self.n_features * 2, time_step=10)\
-                    if feature_type == "fbank" else compute_mfcc(row["src"], n_features=self.n_features)
+                features = compute_fbank(row["src"], time_window=n_features * 2, time_step=10)\
+                    if feature_type == "fbank" else compute_mfcc(row["src"], n_features=n_features)
                 pad_num = (len(features) // 8 + 1) * 8 - len(features)
                 features = np.pad(features, ((0, pad_num), (0, 0)), mode="constant", constant_values=0.)
                 label = [self.am_vocab[pny] for pny in row["pinyin"].split(self.pinyin_sep)]

@@ -42,8 +42,8 @@ model = AcousticModel(vocab_size=VOCAB_SIZE, n_features=N_FEATURES,
 
 
 if __name__ == "__main__":
-    batch = TRAIN_DATA.get_am_batch(feature_type=FEATURE_TYPE, batch_size=BATCH_SIZE)
-    dev_batch = DEV_DATA.get_am_batch(feature_type=FEATURE_TYPE, batch_size=BATCH_SIZE)
+    batch = TRAIN_DATA.get_am_batch(feature_type=FEATURE_TYPE, n_features=N_FEATURES, batch_size=BATCH_SIZE)
+    dev_batch = DEV_DATA.get_am_batch(feature_type=FEATURE_TYPE, n_features=N_FEATURES, batch_size=BATCH_SIZE)
     model.model.summary()
 
     if os.path.exists(AM_MODEL_DIR):
