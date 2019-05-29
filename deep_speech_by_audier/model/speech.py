@@ -1,6 +1,6 @@
 
 import tensorflow as tf
-from tensorflow.python.keras.layers import Conv2D, BatchNormalization, Input, MaxPooling2D, Dense, Dropout, Lambda, Flatten, GRU, add
+from tensorflow.python.keras.layers import Conv2D, BatchNormalization, Input, MaxPooling2D, Dense, Dropout, Reshape, Flatten, GRU, add
 from tensorflow.python.keras.optimizers import Adam
 from tensorflow.python.keras.models import Model
 from tensorflow.python.keras import backend as K
@@ -11,12 +11,12 @@ class DFCNN(object):
         self.n_classes = n_classes
 
     def forward(self, inputs):
-        h = self.cnn_cell(32, inputs, pool=True)
-        h = self.cnn_cell(64, h, pool=True)
-        h = self.cnn_cell(128, h, pool=True)
-        h = self.cnn_cell(128, h, pool=False)
-        h = self.cnn_cell(128, h, pool=False)
-        h = Flatten()(h)
+        h = self.cnn_cell(32, inputs)  # conv[seq_len, n_features, 32] -> pool[seq_len // 2, n_features // 2, 32]
+        h = self.cnn_cell(64, h)  # conv[seq_len // 2, n_features // 2, 64] -> pool[seq_len // 4, n_features // 4, 64]
+        h = self.cnn_cell(128, h)  # conv[seq_len // 4, n_features // 4, 128] -> pool[seq_len // 8, n_features // 8, 128]
+        h = self.cnn_cell(128, h, pool=False)  # conv[seq_len // 8, n_features // 8, 128]
+        h = self.cnn_cell(128, h, pool=False)  # conv[seq_len // 8, n_features // 8, 128]
+        h = Reshape((-1, inputs.shape[2] // 8 * 128))(h)
         h = Dropout(rate=0.2)(h)
         h = self.dense(256)(h)
         h = Dropout(rate=0.2)(h)
@@ -94,9 +94,11 @@ class BiGRU(object):
 
 
 class AcousticModel(object):
-    def __init__(self, vocab_size: int, n_features: int, inference_model: str, learning_rate: float=8e-4, is_training: bool=True):
+    def __init__(self, vocab_size: int, max_seq_len: int, n_features: int, inference_model: str,
+                 learning_rate: float=8e-4, is_training: bool=True):
         self.vocab_size = vocab_size
         self.is_training = is_training
+        self.max_seq_len = max_seq_len
         self.n_features = n_features
 
         if inference_model.upper() == "DFCNN":
@@ -112,7 +114,7 @@ class AcousticModel(object):
 
     def _build_model(self):
         with tf.name_scope("input"):
-            self.inputs = Input(shape=[None, self.n_features, 1])
+            self.inputs = Input(shape=[self.max_seq_len, self.n_features, 1])
             self.labels = Input(shape=[None], dtype="int32")
             self.input_length = Input(shape=[1], dtype="int32")
             self.label_length = Input(shape=[1], dtype="int32")

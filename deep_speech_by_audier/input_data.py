@@ -42,7 +42,7 @@ def compute_fbank(file, time_window=400, time_step: int = 10):
 
 
 class DataGenerator(object):
-    def __init__(self, data_source: str, pinyin_sep: str, data_type: str,
+    def __init__(self, data_source: str, pinyin_sep: str, data_type: str, max_seq_len: Optional[int]=None,
                  is_shuffle: bool=False, data_length: Optional[int]=None, vocab: Optional[Dict[str, int]]=None):
         """
         :param data_source: 结构化标注数据源位置
@@ -62,6 +62,7 @@ class DataGenerator(object):
         self.png_vocab, self.han_vocab = [], []
         self.am_vocab: Dict[str, int] = vocab if vocab else self._make_am_vocab(self.data["pinyin"], sep=pinyin_sep)
         self.pinyin_sep = pinyin_sep
+        self.max_seq_len = max_seq_len
 
     def get_am_batch(self, feature_type: str, n_features: int, batch_size: int=64):
         """ 生成训练数据 """
@@ -96,12 +97,14 @@ class DataGenerator(object):
         return {pny: i for i, pny in enumerate(all_pny)}
 
     @staticmethod
-    def _wav_padding(wav_data_list: List[np.ndarray]):
+    def _wav_padding(wav_data_list: List[np.ndarray], max_seq_len: int):
         n_features = wav_data_list[0].shape[1]
         wav_lens = np.array([len(data) for data in wav_data_list])
         wav_max_len = max(wav_lens)
-        wav_lens //= 8
-        new_wav_data_list = np.zeros(shape=(len(wav_data_list), wav_max_len, n_features))  # padding完毕的容器
+        if wav_max_len > max_seq_len:
+            raise ValueError("Actual Seq length %d is bigger than given max length %d" % (wav_max_len, max_seq_len))
+        wav_lens //= 8  # 仅用于DFCNN，经过卷积操作后，序列长度为 wav_lens // 8
+        new_wav_data_list = np.zeros(shape=(len(wav_data_list), max_seq_len, n_features))  # padding完毕的容器
         for i, wav_data in enumerate(wav_data_list):
             new_wav_data_list[i, :len(wav_data), :] = wav_data  # 塞入数据
         return new_wav_data_list[..., np.newaxis], wav_lens
