@@ -53,7 +53,7 @@ class DataGenerator(object):
         self.data = pd.read_csv(
             data_source, sep="\t", encoding="utf-8", header=None, engine="python",
             names=["src", "content", "pinyin", "data_type"]
-        ).query("data_type == %s" % data_type)
+        ).query("data_type == '%s'" % data_type)
 
         if data_length is not None and data_length > 0:
             self.data: pd.DataFrame = self.data[: data_length]
