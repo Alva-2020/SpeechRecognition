@@ -10,8 +10,10 @@ class DFCNN(object):
     def __init__(self, n_classes: int, n_features: int):
         self.n_classes = n_classes
         self.n_features = n_features
+        inputs = Input(shape=[None, n_features, 1])
+        self.model = Model(inputs=inputs, outputs=self._forward(inputs))
 
-    def forward(self, inputs):
+    def _forward(self, inputs):
         h = self.cnn_cell(32, inputs)  # conv[seq_len, n_features, 32] -> pool[seq_len // 2, n_features // 2, 32]
         h = self.cnn_cell(64, h)  # conv[seq_len // 2, n_features // 2, 64] -> pool[seq_len // 4, n_features // 4, 64]
         h = self.cnn_cell(128, h)  # conv[seq_len // 4, n_features // 4, 128] -> pool[seq_len // 8, n_features // 8, 128]
@@ -22,6 +24,9 @@ class DFCNN(object):
         h = self.dense(256)(h)
         h = Dropout(rate=0.2)(h)
         return self.dense(self.n_classes, activation="softmax")(h)
+
+    def __call__(self):
+        return self.model
 
     @staticmethod
     def conv2d(size):
@@ -55,8 +60,10 @@ class BiGRU(object):
     def __init__(self, n_classes: int, n_features: int):
         self.n_classes = n_classes
         self.n_features = n_features
+        inputs = Input(shape=[None, n_features, None])
+        self.model = Model(inputs=inputs, outputs=self._forward(inputs))
 
-    def forward(self, inputs):
+    def _forward(self, inputs):
         h = Flatten()(inputs)
         h = self.dense(512, h)
         h = self.dense(512, h)
@@ -65,6 +72,9 @@ class BiGRU(object):
         h = self.bi_gru(512, h)
         h = self.dense(512, h)
         return self.dense(self.n_classes, h, activation="softmax")
+
+    def __call__(self):
+        return self.model
 
     @staticmethod
     def bi_gru(units, x):
@@ -113,10 +123,10 @@ class AcousticModel(object):
         self.input_length = Input(shape=[1], dtype="int32")
         self.label_length = Input(shape=[1], dtype="int32")
         if self.model_type == "DFCNN":
-            self.inference_model = DFCNN(self.vocab_size, self.n_features)
+            self.inference_model = DFCNN(self.vocab_size, self.n_features)()
         else:
-            self.inference_model = BiGRU(self.vocab_size, self.n_features)
-        self.y_pred = self.inference_model.forward(self.inputs)
+            self.inference_model = BiGRU(self.vocab_size, self.n_features)()
+        self.y_pred = self.inference_model(self.inputs)
         if self.model_type == "DFCNN":
             input_length = self.input_length // 8  # 经过DFCNN后进入ctc计算的有效序列长度为输入长度的 // 8
         else:
