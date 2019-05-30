@@ -1,6 +1,6 @@
 
 from tensorflow import shape as tf_shape
-from tensorflow.python.keras.layers import Conv2D, BatchNormalization, Input, MaxPooling2D, Dense, Dropout, Reshape, Flatten, GRU, add
+from tensorflow.python.keras.layers import Conv2D, BatchNormalization, Input, MaxPooling2D, Dense, Dropout, Reshape, Flatten, GRU, add, Lambda
 from tensorflow.python.keras.optimizers import Adam
 from tensorflow.python.keras.models import Model
 from tensorflow.python.keras import backend as K
@@ -118,30 +118,29 @@ class AcousticModel(object):
             self._opt_init()
 
     def _build_model(self):
-        self.inputs = Input(shape=[None, self.n_features, 1], dtype="float32")
-        self.labels = Input(shape=[None], dtype="int32")
-        self.input_length = Input(shape=[1], dtype="int32")
-        self.label_length = Input(shape=[1], dtype="int32")
+        self.inputs = Input(shape=[None, self.n_features, 1], dtype="float32", name="the_inputs")
+        self.labels = Input(shape=[None], dtype="int32", name="the_labels")
+        self.input_length = Input(shape=[1], dtype="int32", name="the_input_length")
+        self.label_length = Input(shape=[1], dtype="int32", name="the_label_length")
         if self.model_type == "DFCNN":
             self.inference_model = DFCNN(self.vocab_size, self.n_features)()
         else:
             self.inference_model = BiGRU(self.vocab_size, self.n_features)()
         self.y_pred = self.inference_model(self.inputs)
-        if self.model_type == "DFCNN":
-            input_length = self.input_length // 8  # 经过DFCNN后进入ctc计算的有效序列长度为输入长度的 // 8
-        else:
-            input_length = self.input_length
-        self.loss = self.ctc_loss(self.labels, self.y_pred, input_length, self.label_length)
-        self.model = Model(inputs=[self.labels, self.y_pred, self.input_length, self.label_length], outputs=self.loss)
+        self.loss = Lambda(function=self.ctc_loss, name="ctc_loss")([self.labels, self.y_pred, self.input_length, self.label_length])  # function 只接受一个占位输入
+        self.model = Model(inputs=[self.labels, self.inputs, self.input_length, self.label_length], outputs=self.loss)
 
     def _opt_init(self):
         self.model.compile(
             optimizer=Adam(lr=self.lr, beta_1=0.9, beta_2=0.999, decay=0.01, epsilon=1e-7),
-            loss={"ctc": lambda inputs, outputs: outputs}  # 这里的outputs就是loss，而不是基于inputs和outputs计算的损失
+            # 这里的outputs就是loss，而不是基于inputs和outputs计算的损失
+            # key的名称必须是层的名称，如上文中的ctc_loss
+            loss={"ctc_loss": lambda inputs, outputs: outputs}
         )
 
     @staticmethod
-    def ctc_loss(labels, y_pred, input_length, label_length):
+    def ctc_loss(inputs):
+        labels, y_pred, input_length, label_length = inputs
         y_pred = y_pred[:, :, :]
         cost = K.ctc_batch_cost(y_true=labels, y_pred=y_pred, input_length=input_length, label_length=label_length)
         return K.mean(cost)

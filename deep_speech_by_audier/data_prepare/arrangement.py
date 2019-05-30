@@ -42,7 +42,8 @@ def _transform_thchs30(source_dir: str, output_file: str, correction_file: Optio
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     with open(output_file, "w", encoding="utf-8") as fw:
         for file in tqdm.tqdm(glob.glob(os.path.join(data_dir, "*.trn"))):
-            wav_name = os.path.splitext(os.path.basename(file).strip(".trn"))[0]
+            wav_file = file.strip(".trn")
+            wav_name = os.path.splitext(os.path.basename(wav_file))[0]
             with open(file, "r", encoding="utf-8") as fr:
                 content, pinyin, *_ = fr.readlines()
             content = HAN_PATTERN.findall(content)  # 只取汉字部分
@@ -64,7 +65,7 @@ def _transform_thchs30(source_dir: str, output_file: str, correction_file: Optio
                 partition = "test"
             elif wav_name in dev_sets:
                 partition = "dev"
-            fw.write("\t".join([file, content, pinyin, partition]) + "\n")
+            fw.write("\t".join([wav_file, content, pinyin, partition]) + "\n")
     print("Transformed Done! Successfully written into %s" % output_file)
 
 
@@ -88,4 +89,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     transform(args)
-    # python arrangement.py --thchs30 "F:/for learn/data source/SpeechCHS/THCHS30/data_thchs30"
+    # python arrangement.py --thchs30 "F:/for learn/data_source/Speech/THCHS30/data_thchs30"
