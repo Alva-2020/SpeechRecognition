@@ -42,7 +42,7 @@ def compute_fbank(file, time_window=400, time_step: int = 10):
 
 
 class DataGenerator(object):
-    def __init__(self, data_source: str, pinyin_sep: str, data_type: str, max_seq_len: Optional[int]=None,
+    def __init__(self, data_source: str, pinyin_sep: str, data_type: str,
                  is_shuffle: bool=False, data_length: Optional[int]=None, vocab: Optional[Dict[str, int]]=None):
         """
         :param data_source: 结构化标注数据源位置
@@ -62,7 +62,6 @@ class DataGenerator(object):
         self.png_vocab, self.han_vocab = [], []
         self.am_vocab: Dict[str, int] = vocab if vocab else self._make_am_vocab(self.data["pinyin"], sep=pinyin_sep)
         self.pinyin_sep = pinyin_sep
-        self.max_seq_len = max_seq_len
 
     def get_am_batch(self, feature_type: str, n_features: int, batch_size: int=64):
         """ 生成训练数据 """
@@ -97,14 +96,19 @@ class DataGenerator(object):
         return {pny: i for i, pny in enumerate(all_pny)}
 
     @staticmethod
-    def _wav_padding(wav_data_list: List[np.ndarray], max_seq_len: int):
+    def _wav_padding(wav_data_list: List[np.ndarray]):
+        """
+        对全部语音做 长度对齐 padding
+        :param wav_data_list: 语音基础特征数据 [ndarray(seq_1, n_features), ndarray(seq_2, n_features), ...]
+        :return:
+            - 对齐的特征数据 [ndarray(max_len, n_features), ndarray(max_len, n_features), ...]
+            - 有效的序列长度
+        """
         n_features = wav_data_list[0].shape[1]
         wav_lens = np.array([len(data) for data in wav_data_list])
         wav_max_len = max(wav_lens)
-        if wav_max_len > max_seq_len:
-            raise ValueError("Actual Seq length %d is bigger than given max length %d" % (wav_max_len, max_seq_len))
-        wav_lens //= 8  # 仅用于DFCNN，经过卷积操作后，序列长度为 wav_lens // 8
-        new_wav_data_list = np.zeros(shape=(len(wav_data_list), max_seq_len, n_features))  # padding完毕的容器
+        wav_lens //= 8  # 仅用于DFCNN，经过卷积操作后，进入ctc计算的特征序列有效长度为 wav_lens // 8
+        new_wav_data_list = np.zeros(shape=(len(wav_data_list), wav_max_len, n_features))  # padding完毕的容器
         for i, wav_data in enumerate(wav_data_list):
             new_wav_data_list[i, :len(wav_data), :] = wav_data  # 塞入数据
         return new_wav_data_list[..., np.newaxis], wav_lens
