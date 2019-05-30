@@ -5,10 +5,14 @@ import sys
 import re
 import glob
 import tqdm
+import platform
 import argparse
 from typing import Optional
 
-sys.path.append("F:/Code projects/Python/SpeechRecognition")
+system = platform.system().lower()
+sys.path.append("F:/Code projects/Python/SpeechRecognition" if system == "windows"
+                else "/data/zhaochengming/projects/SpeechRecognition")
+
 from deep_speech_by_audier.constant import DATA_SOURCE_DIR
 
 HAN_PATTERN = re.compile('[\u4e00-\u9fa5]')  # 汉字
