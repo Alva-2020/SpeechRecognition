@@ -16,7 +16,7 @@ def decode_ctc(num_result: np.ndarray, id2word: Dict[int, str]):
 
 def get_session(graph=None):
     config = tf.ConfigProto()
-    config.gpu_options.per_process_gpu_memory_fraction = 0.8  # 程序最多只能占用指定gpu80%的显存
+    config.gpu_options.per_process_gpu_memory_fraction = 0.9  # 程序最多只能占用指定gpu90%的显存
     config.gpu_options.allow_growth = True  # 程序按需申请内存
     sess = tf.Session(config=config, graph=graph)
     return sess
