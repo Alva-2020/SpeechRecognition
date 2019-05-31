@@ -75,7 +75,7 @@ if __name__ == "__main__":
         model = AcousticModel(vocab_size=VOCAB_SIZE, n_features=N_FEATURES,
                               inference_model_type=MODEL_TYPE, learning_rate=LEARNING_RATE, is_training=True)
         model.model.summary()
-        # print(model.model._feed_input_names)
+        print(model.model._feed_input_names)
         K.set_session(get_session(graph=graph))
 
         if os.path.exists(AM_MODEL_DIR):
