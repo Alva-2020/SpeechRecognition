@@ -42,7 +42,7 @@ class DataGenerator(Sequence):
         """
         :param data_source: 结构化标注数据源位置
         :param data_type: 指明取哪部分，[train, test, dev]
-        :param is_shuffle: 是否shuffle
+        :param shuffle: 是否shuffle
         :param data_length: 限制读入的数据条数
         """
         self.data = pd.read_csv(
@@ -69,7 +69,7 @@ class DataGenerator(Sequence):
     def __getitem__(self, index):
         batch_indexes = self.indexes[index * self.batch_size: (index + 1) * self.batch_size]
         batch_data = self.data.loc[batch_indexes]
-        wav_data_list, label_data_list, input_length, label_length = self.data_process(batch_data)
+        wav_data_list, label_data_list, input_length, label_length = self._data_process(batch_data)
         input_length = input_length // 8 if self.model_type.upper() == "DFCNN" else input_length
 
         inputs = {
@@ -86,7 +86,7 @@ class DataGenerator(Sequence):
         if self.shuffle:
             np.random.shuffle(self.indexes)
 
-    def data_process(self, batch_data: pd.DataFrame):
+    def _data_process(self, batch_data: pd.DataFrame):
         """ 生成训练数据 """
         wav_data_list, label_data_list = [], []
         for _, row in batch_data.iterrows():

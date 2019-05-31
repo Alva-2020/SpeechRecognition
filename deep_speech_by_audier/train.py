@@ -13,7 +13,7 @@ from deep_speech_by_audier.input_data import DataGenerator
 from deep_speech_by_audier.model.speech import AcousticModel
 from deep_speech_by_audier.model.utils import get_session
 from _utils.tf.util import get_board_log_path
-from typing import Dict, Generator
+from typing import Dict
 import tensorflow as tf
 
 
@@ -41,6 +41,8 @@ DEV_BATCH = DataGenerator(
     n_features=N_FEATURES, shuffle=SHUFFLE, batch_size=BATCH_SIZE, data_length=10, vocab=PNY2ID
 )
 
+BATCH_NUM = len(TRAIN_BATCH)
+
 
 if __name__ == "__main__":
     print("AM_LOG_PATH: %s" % AM_LOG_DIR)
@@ -67,9 +69,8 @@ if __name__ == "__main__":
         tensorboard = TensorBoard(log_dir=get_board_log_path(model_name), batch_size=BATCH_SIZE)
 
         model.model.fit_generator(
-            TRAIN_BATCH, epochs=N_EPOCH, verbose=1,  callbacks=[checkpoint, tensorboard],
-            validation_data=DEV_BATCH, validation_steps=200, use_multiprocessing=False, workers=1,
-            max_queue_size=10
+            TRAIN_BATCH, epochs=N_EPOCH, verbose=1,  callbacks=[checkpoint, tensorboard], steps_per_epoch=BATCH_NUM,
+            validation_data=DEV_BATCH, validation_steps=200, use_multiprocessing=True, workers=6
         )
         model.model.save_weights(AM_MODEL_DIR)
 
