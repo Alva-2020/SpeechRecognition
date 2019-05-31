@@ -62,6 +62,8 @@ def batch_wrapper(batch: Generator, model_type: str):
 
 
 if __name__ == "__main__":
+    print("AM_LOG_PATH: %s" % AM_LOG_DIR)
+
     batch = TRAIN_DATA.get_am_batch(feature_type=FEATURE_TYPE, n_features=N_FEATURES, batch_size=BATCH_SIZE)
     dev_batch = DEV_DATA.get_am_batch(feature_type=FEATURE_TYPE, n_features=N_FEATURES, batch_size=BATCH_SIZE)
     batch = batch_wrapper(batch, MODEL_TYPE)
@@ -73,8 +75,7 @@ if __name__ == "__main__":
         model = AcousticModel(vocab_size=VOCAB_SIZE, n_features=N_FEATURES,
                               inference_model_type=MODEL_TYPE, learning_rate=LEARNING_RATE, is_training=True)
         model.model.summary()
-        print(model.model._feed_input_names)
-
+        # print(model.model._feed_input_names)
         K.set_session(get_session(graph=graph))
 
         if os.path.exists(AM_MODEL_DIR):
