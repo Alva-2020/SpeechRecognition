@@ -6,7 +6,7 @@ from scipy.fftpack import fft
 from scipy.io import wavfile
 from python_speech_features import mfcc
 from tensorflow.python.keras.utils import Sequence
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 
 
 # mfcc 特征
@@ -49,10 +49,10 @@ class DataGenerator(Sequence):
             data_source, sep="\t", encoding="utf-8", header=None, engine="python",
             names=["src", "content", "pinyin", "data_type"]
         ).query("data_type == '%s'" % data_type)
-        self.data: List[(str, str)] = list(zip(self._data["src"], self._data["pinyin"]))
+        self.data = self._data[["src", "pinyin"]].values
 
         if data_length > 0:
-            self.data: pd.DataFrame = self.data[: data_length]
+            self.data = self.data[: data_length]
 
         self.batch_size = batch_size
         self.indexes = np.arange(len(self.data))
@@ -69,7 +69,7 @@ class DataGenerator(Sequence):
 
     def __getitem__(self, index):
         batch_indexes = self.indexes[index * self.batch_size: (index + 1) * self.batch_size]
-        batch_data = [self.data[i] for i in batch_indexes]
+        batch_data = self.data[batch_indexes]
         wav_data_list, label_data_list, input_length, label_length = self._data_process(batch_data)
         input_length = input_length // 8 if self.model_type.upper() == "DFCNN" else input_length
 
@@ -87,7 +87,7 @@ class DataGenerator(Sequence):
         if self.shuffle:
             np.random.shuffle(self.indexes)
 
-    def _data_process(self, batch_data: List[(str, str)]):
+    def _data_process(self, batch_data):
         """ 生成训练数据 """
         wav_data_list, label_data_list = [], []
         for src, pnys in batch_data:
