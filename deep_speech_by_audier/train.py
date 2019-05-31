@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
         model.model.fit_generator(
             TRAIN_BATCH, epochs=N_EPOCH, verbose=1,  callbacks=[checkpoint, tensorboard], steps_per_epoch=BATCH_NUM,
-            validation_data=DEV_BATCH, validation_steps=200, use_multiprocessing=True, workers=4
+            validation_data=DEV_BATCH, validation_steps=200, use_multiprocessing=True, workers=2
         )
         model.model.save_weights(AM_MODEL_DIR)
 
