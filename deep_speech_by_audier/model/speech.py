@@ -17,7 +17,7 @@ class DFCNN(object):
         h = self.cnn_cell(128, h)  # conv[seq_len // 4, n_features // 4, 128] -> pool[seq_len // 8, n_features // 8, 128]
         h = self.cnn_cell(128, h, pool=False)  # conv[seq_len // 8, n_features // 8, 128]
         h = self.cnn_cell(128, h, pool=False)  # conv[seq_len // 8, n_features // 8, 128]
-        h = Reshape((tf_shape(h)[1], self.n_features // 8 * 128))(h)
+        h = Reshape((-1, self.n_features // 8 * 128))(h)
         h = Dropout(rate=0.2)(h)
         h = self.dense(256)(h)
         h = Dropout(rate=0.2)(h)
