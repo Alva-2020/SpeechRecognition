@@ -45,10 +45,11 @@ class DataGenerator(Sequence):
         :param shuffle: 是否shuffle
         :param data_length: 限制读入的数据条数
         """
-        self.data = pd.read_csv(
+        self._data = pd.read_csv(
             data_source, sep="\t", encoding="utf-8", header=None, engine="python",
             names=["src", "content", "pinyin", "data_type"]
         ).query("data_type == '%s'" % data_type)
+        self.data: List[(str, str)] = list(zip(self._data["src"], self._data["pinyin"]))
 
         if data_length > 0:
             self.data: pd.DataFrame = self.data[: data_length]
@@ -68,7 +69,7 @@ class DataGenerator(Sequence):
 
     def __getitem__(self, index):
         batch_indexes = self.indexes[index * self.batch_size: (index + 1) * self.batch_size]
-        batch_data = self.data.loc[batch_indexes]
+        batch_data = [self.data[i] for i in batch_indexes]
         wav_data_list, label_data_list, input_length, label_length = self._data_process(batch_data)
         input_length = input_length // 8 if self.model_type.upper() == "DFCNN" else input_length
 
@@ -86,16 +87,16 @@ class DataGenerator(Sequence):
         if self.shuffle:
             np.random.shuffle(self.indexes)
 
-    def _data_process(self, batch_data: pd.DataFrame):
+    def _data_process(self, batch_data: List[(str, str)]):
         """ 生成训练数据 """
         wav_data_list, label_data_list = [], []
-        for _, row in batch_data.iterrows():
-            features = compute_fbank(row["src"], time_window=self.n_features * 2, time_step=10)\
-                if self.feature_type == "fbank" else compute_mfcc(row["src"], n_features=self.n_features)
+        for src, pnys in batch_data:
+            features = compute_fbank(src, time_window=self.n_features * 2, time_step=10)\
+                if self.feature_type == "fbank" else compute_mfcc(src, n_features=self.n_features)
             pad_num = (len(features) // 8 + 1) * 8 - len(features)
             features = np.pad(features, ((0, pad_num), (0, 0)), mode="constant", constant_values=0.)
 
-            label = [self.am_vocab[pny] for pny in row["pinyin"].split(self.pinyin_sep)]
+            label = [self.am_vocab[pny] for pny in pnys.split(self.pinyin_sep)]
             label_ctc_len = self._ctc_len(label)
 
             if len(features) // 8 >= label_ctc_len:  # 考虑 DFCNN的输入特征大小
