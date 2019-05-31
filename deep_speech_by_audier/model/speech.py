@@ -128,7 +128,7 @@ class AcousticModel(object):
             self.inference_model = BiGRU(self.vocab_size, self.n_features)()
         self.y_pred = self.inference_model(self.inputs)
         self.loss = Lambda(function=self.ctc_loss, name="ctc_loss")([self.labels, self.y_pred, self.input_length, self.label_length])  # function 只接受一个占位输入
-        self.model = Model(inputs=[self.labels, self.inputs, self.input_length, self.label_length], outputs=self.loss)
+        self.model = Model(inputs=[self.inputs, self.labels, self.input_length, self.label_length], outputs=self.loss)
 
     def _opt_init(self):
         self.model.compile(

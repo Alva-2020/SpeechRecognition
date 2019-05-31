@@ -52,12 +52,13 @@ def batch_wrapper(batch: Generator, model_type: str):
             input_length //= 8
 
         outputs = np.zeros(shape=(len(input_length), ))  # 一个空的输出用来占位满足keras.Model的fit_generator 输入API
-        inputs = {
-            "the_inputs": input_data_list,
-            "the_labels": label_data_list,
-            "the_input_length": input_length,
-            "the_label_length": label_length
-        }
+        # inputs = {
+        #     "the_inputs": input_data_list,
+        #     "the_labels": label_data_list,
+        #     "the_input_length": input_length,
+        #     "the_label_length": label_length
+        # }
+        inputs = [input_data_list, label_data_list, input_length, label_length]
         yield (inputs, outputs)
 
 
