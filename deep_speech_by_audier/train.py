@@ -58,7 +58,7 @@ if __name__ == "__main__":
             print("Load acoustic model...")
             model.model.load_weights(AM_MODEL_DIR)
 
-        ckpt = "model_{epoch:02d}-{val_acc:.2f}.hdf5"
+        ckpt = "model_{epoch:02d}-{val_loss:.2f}.hdf5"
         checkpoint = ModelCheckpoint(
             filepath=os.path.join(AM_LOG_DIR, ckpt),
             monitor="val_loss", save_weights_only=False,
