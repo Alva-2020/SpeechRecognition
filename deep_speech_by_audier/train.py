@@ -33,7 +33,7 @@ DATA_SOURCE = os.path.join(DATA_SOURCE_DIR, "labeled_data.txt")
 
 TRAIN_BATCH = DataGenerator(
     data_source=DATA_SOURCE, pinyin_sep="-", data_type="train", model_type=MODEL_TYPE, feature_type=FEATURE_TYPE,
-    n_features=N_FEATURES, shuffle=SHUFFLE, batch_size=BATCH_SIZE, data_length=100, vocab=PNY2ID
+    n_features=N_FEATURES, shuffle=SHUFFLE, batch_size=BATCH_SIZE, data_length=-1, vocab=PNY2ID
 )
 
 DEV_BATCH = DataGenerator(
