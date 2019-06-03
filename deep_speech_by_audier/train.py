@@ -26,7 +26,7 @@ N_FEATURES = 200
 BATCH_SIZE = 4
 VOCAB_SIZE = len(PNY2ID)  # 1585
 LEARNING_RATE = 8e-4
-N_EPOCH = 10
+N_EPOCH = 100
 MODEL_TYPE = "DFCNN"
 DATA_SOURCE = os.path.join(DATA_SOURCE_DIR, "labeled_data.txt")
 
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         ckpt = "model_{epoch:02d}-{val_loss:.2f}.hdf5"
         checkpoint = ModelCheckpoint(
             filepath=os.path.join(AM_LOG_DIR, ckpt),
-            monitor="val_acc", save_weights_only=False,
+            monitor="val_loss", save_weights_only=False,
             verbose=1, save_best_only=True
         )
 
