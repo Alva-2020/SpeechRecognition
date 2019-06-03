@@ -25,7 +25,7 @@ def compute_fbank(file, time_window=400, time_step: int = 10):
     i = 0
     while True:
         p_start = int(i * fs * time_step / 1000)
-        p_end = p_start + 400
+        p_end = p_start + time_window
         if p_end > len(wav_arr) - 1:
             break
         data_line = wav_arr[p_start: p_end]

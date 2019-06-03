@@ -1,6 +1,7 @@
 
 import os
 import sys
+import tqdm
 import platform
 system = platform.system().lower()
 sys.path.append("F:/Code projects/Python/SpeechRecognition" if system == "windows"
@@ -10,6 +11,7 @@ from deep_speech_by_audier.model.speech import AcousticModel
 from deep_speech_by_audier.model.utils import get_session, decode_ctc
 from deep_speech_by_audier.constant import make_vocab, DATA_SOURCE_DIR, AM_LOG_DIR, AM_MODEL_DIR
 from deep_speech_by_audier.input_data import DataGenerator
+from _utils.u_distance import _levenshtein
 from typing import Dict
 
 
@@ -30,23 +32,27 @@ TEST_BATCH = DataGenerator(
 
 
 if __name__ == "__main__":
-
     model = AcousticModel(vocab_size=VOCAB_SIZE, n_features=N_FEATURES,
                           inference_model_type=MODEL_TYPE, learning_rate=0., is_training=False)
     print("Load acoustic model...")
     K.set_session(get_session())
-    model.inference_model.load_weights(AM_MODEL_DIR, by_name=True)
+    model.inference_model.load_weights(AM_MODEL_DIR)
 
-    for i in range(10):
-        print("%d th example" % i)
-        inputs, _ = TEST_BATCH[i]  # inputs [BATCH_SIZE, N_FEATURES]
-        x = inputs["the_inputs"]
-        y_true = [ID2PNY[x] for x in inputs["the_labels"][0]]
-        y_pred = model.inference_model.predict(x, batch_size=BATCH_SIZE, steps=1)
-        _, y_pred = decode_ctc(y_pred, ID2PNY)
+    with open(os.path.join(DATA_SOURCE_DIR, "test_result.txt"), "w", encoding="utf-8") as f:
+        avg_wer = 0.0
+        for i in tqdm.tqdm(range(len(TEST_BATCH)), total=len(TEST_BATCH)):
+            inputs, _ = TEST_BATCH[i]  # inputs [BATCH_SIZE, N_FEATURES]
+            src = TEST_BATCH.data[i, 0]
+            x = inputs["the_inputs"]
+            y_true = [ID2PNY[x] for x in inputs["the_labels"][0]]
+            y_pred = model.inference_model.predict(x, batch_size=BATCH_SIZE, steps=1)
+            _, y_pred = decode_ctc(y_pred, ID2PNY)
+            diff = _levenshtein(y_true, y_pred)
+            wer = diff / len(y_true)
+            avg_wer += wer
+            f.write("\t".join([src, " ".join(y_true), " ".join(y_pred), str(wer)]) + "\n")
+        print("Test AVG wer: %.4f" % avg_wer / len(TEST_BATCH))
 
-        print("Original Result: %s" % "-".join(y_true))
-        print("Pred Result: %s" % "-".join(y_pred))
 
 
 
