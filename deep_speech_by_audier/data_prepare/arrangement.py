@@ -73,6 +73,10 @@ def _transform_thchs30(source_dir: str, output_file: str, correction_file: Optio
     print("Transformed Done! Successfully written into %s" % output_file)
 
 
+def _transform_aishell(source_dir: str, output_file: str, correction_file: Optional[str]=None):
+    pass
+
+
 def transform(args):
     if args.thchs30:
         source_dir, *files = args.thchs30

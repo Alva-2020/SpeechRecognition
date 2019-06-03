@@ -39,7 +39,6 @@ if __name__ == "__main__":
     model.inference_model.load_weights(AM_MODEL_DIR)
 
     with open(os.path.join(DATA_SOURCE_DIR, "test_result.txt"), "w", encoding="utf-8") as f:
-        avg_wer = 0.0
         for i in tqdm.tqdm(range(len(TEST_BATCH)), total=len(TEST_BATCH)):
             inputs, _ = TEST_BATCH[i]  # inputs [BATCH_SIZE, N_FEATURES]
             src = TEST_BATCH.data[i, 0]
@@ -47,11 +46,11 @@ if __name__ == "__main__":
             y_true = [ID2PNY[x] for x in inputs["the_labels"][0]]
             y_pred = model.inference_model.predict(x, batch_size=BATCH_SIZE, steps=1)
             _, y_pred = decode_ctc(y_pred, ID2PNY)
-            diff = _levenshtein(y_true, y_pred)
-            wer = diff / len(y_true)
-            avg_wer += wer
-            f.write("\t".join([src, " ".join(y_true), " ".join(y_pred), str(wer)]) + "\n")
-        print("Test AVG wer: %.4f" % avg_wer / len(TEST_BATCH))
+            # diff = _levenshtein(y_true, y_pred)
+            # wer = diff / len(y_true)
+            # avg_wer += wer
+            f.write("\t".join([src, " ".join(y_true), " ".join(y_pred)]) + "\n")
+        # print("Test AVG wer: %.4f" % avg_wer / len(TEST_BATCH))
 
 
 
