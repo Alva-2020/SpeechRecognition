@@ -4,6 +4,7 @@ from tensorflow.python.keras.layers import Conv2D, BatchNormalization, Input, Ma
 from tensorflow.python.keras.optimizers import Adam
 from tensorflow.python.keras.models import Model
 from tensorflow.python.keras import backend as K
+from tensorflow.python.keras.utils import multi_gpu_model
 
 
 class DFCNN(object):
@@ -96,12 +97,13 @@ class BiGRU(object):
 
 
 class AcousticModel(object):
-    def __init__(self, vocab_size: int, n_features: int, inference_model_type: str,
+    def __init__(self, vocab_size: int, n_features: int, inference_model_type: str, gpu_num: int=1,
                  learning_rate: float=8e-4, is_training: bool=True):
         self.vocab_size = vocab_size
         self.is_training = is_training
         self.n_features = n_features
         self.model_type = inference_model_type.upper()
+        self.gpu_num = gpu_num
         self.lr = learning_rate
         self._build_model()
         if is_training:
@@ -123,6 +125,8 @@ class AcousticModel(object):
         self.label_length = Input(shape=[1], dtype="int32", name="the_label_length")
         self.loss = Lambda(function=self.ctc_loss, name="ctc_loss")([self.labels, self.y_pred, self.input_length, self.label_length])  # function 只接受一个占位输入
         self.ctc_model = Model(inputs=[self.inputs, self.labels, self.input_length, self.label_length], outputs=self.loss)
+        if self.gpu_num > 1:
+            self.ctc_model = multi_gpu_model(model=self.ctc_model, gpus=self.gpu_num)
 
         self.ctc_model.compile(
             optimizer=Adam(lr=self.lr, beta_1=0.9, beta_2=0.999, decay=0.01, epsilon=1e-7),

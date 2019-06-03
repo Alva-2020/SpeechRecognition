@@ -51,7 +51,7 @@ if __name__ == "__main__":
     graph = tf.Graph()
     tf.reset_default_graph()
     with graph.as_default():
-        model = AcousticModel(vocab_size=VOCAB_SIZE, n_features=N_FEATURES,
+        model = AcousticModel(vocab_size=VOCAB_SIZE, n_features=N_FEATURES, gpu_num=2,
                               inference_model_type=MODEL_TYPE, learning_rate=LEARNING_RATE, is_training=True)
         model.inference_model.summary()
         K.set_session(get_session(graph=graph))
