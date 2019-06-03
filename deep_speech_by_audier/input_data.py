@@ -38,7 +38,7 @@ def compute_fbank(file, time_window=400, time_step: int = 10):
 
 class DataGenerator(Sequence):
     def __init__(self, data_source: str, pinyin_sep: str, data_type: str, batch_size: int, feature_type: str, n_features: int,
-                 model_type: str, shuffle: bool=False, data_length: Optional[int]=None, vocab: Optional[Dict[str, int]]=None):
+                 feed_model: str, model_type: str, shuffle: bool=False, data_length: Optional[int]=None, vocab: Optional[Dict[str, int]]=None):
         """
         :param data_source: 结构化标注数据源位置
         :param data_type: 指明取哪部分，[train, test, dev]
@@ -49,18 +49,19 @@ class DataGenerator(Sequence):
             data_source, sep="\t", encoding="utf-8", header=None, engine="python",
             names=["src", "content", "pinyin", "data_type"]
         ).query("data_type == '%s'" % data_type)
-        self.data = self._data[["src", "pinyin"]].values
+        self.data = self._data[["src", "pinyin"]].values if feed_model == "speech"\
+            else self._data[["pinyin", "content"]].values
 
         if data_length > 0:
             self.data = self.data[: data_length]
 
         self.batch_size = batch_size
-        self.indexes = np.arange(len(self.data))
+        self.indexes = np.arange(len(self._data))
         self.feature_type = feature_type
         self.n_features = n_features
+        self.feed_model = feed_model
         self.model_type = model_type
         self.shuffle = shuffle
-        self.png_vocab, self.han_vocab = [], []
         self.am_vocab: Dict[str, int] = vocab if vocab else self._make_am_vocab(self.data["pinyin"], sep=pinyin_sep)
         self.pinyin_sep = pinyin_sep
 
@@ -70,24 +71,27 @@ class DataGenerator(Sequence):
     def __getitem__(self, index):
         batch_indexes = self.indexes[index * self.batch_size: (index + 1) * self.batch_size]
         batch_data = self.data[batch_indexes]
-        wav_data_list, label_data_list, input_length, label_length = self._data_process(batch_data)
-        input_length = input_length // 8 if self.model_type.upper() == "DFCNN" else input_length
+        if self.feed_model == "speech":
+            wav_data_list, label_data_list, input_length, label_length = self._speech_data_process(batch_data)
+            input_length = input_length // 8 if self.model_type.upper() == "DFCNN" else input_length
 
-        inputs = {
-            "the_inputs": wav_data_list,
-            "the_labels": label_data_list,
-            "the_input_length": input_length,
-            "the_label_length": label_length
-        }
-        outputs = np.zeros(shape=(len(input_length),))  # 一个空的输出用来占位满足keras.Model的fit_generator 输入API
-        return inputs, outputs
+            inputs = {
+                "the_inputs": wav_data_list,
+                "the_labels": label_data_list,
+                "the_input_length": input_length,
+                "the_label_length": label_length
+            }
+            outputs = np.zeros(shape=(len(input_length),))  # 一个空的输出用来占位满足keras.Model的fit_generator 输入API
+            return inputs, outputs
+        else:
+            pass
 
     def on_epoch_end(self):
         """在每次epoch结束时进行何种操作"""
         if self.shuffle:
             np.random.shuffle(self.indexes)
 
-    def _data_process(self, batch_data):
+    def _speech_data_process(self, batch_data):
         """ 生成训练数据 """
         wav_data_list, label_data_list = [], []
         for src, pnys in batch_data:

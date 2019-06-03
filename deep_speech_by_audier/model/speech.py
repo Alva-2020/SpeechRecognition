@@ -109,19 +109,22 @@ class AcousticModel(object):
 
     def _build_model(self):
         self.inputs = Input(shape=[None, self.n_features, 1], dtype="float32", name="the_inputs")
+
+        if self.model_type == "DFCNN":
+            self.inference_ = DFCNN(self.vocab_size, self.n_features)
+        else:
+            self.inference_ = BiGRU(self.vocab_size, self.n_features)
+        self.y_pred = self.inference_(self.inputs)
+        self.inference_model = Model(inputs=self.inputs, outputs=self.y_pred)
+
+    def _opt_init(self):
         self.labels = Input(shape=[None], dtype="int32", name="the_labels")
         self.input_length = Input(shape=[1], dtype="int32", name="the_input_length")
         self.label_length = Input(shape=[1], dtype="int32", name="the_label_length")
-        if self.model_type == "DFCNN":
-            self.inference_model = DFCNN(self.vocab_size, self.n_features)
-        else:
-            self.inference_model = BiGRU(self.vocab_size, self.n_features)
-        self.y_pred = self.inference_model(self.inputs)
         self.loss = Lambda(function=self.ctc_loss, name="ctc_loss")([self.labels, self.y_pred, self.input_length, self.label_length])  # function 只接受一个占位输入
-        self.model = Model(inputs=[self.inputs, self.labels, self.input_length, self.label_length], outputs=self.loss)
+        self.ctc_model = Model(inputs=[self.inputs, self.labels, self.input_length, self.label_length], outputs=self.loss)
 
-    def _opt_init(self):
-        self.model.compile(
+        self.ctc_model.compile(
             optimizer=Adam(lr=self.lr, beta_1=0.9, beta_2=0.999, decay=0.01, epsilon=1e-7),
             # 这里的outputs就是loss，而不是基于inputs和outputs计算的损失
             # key的名称必须是层的名称，如上文中的ctc_loss

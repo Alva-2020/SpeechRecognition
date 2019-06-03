@@ -32,13 +32,15 @@ DATA_SOURCE = os.path.join(DATA_SOURCE_DIR, "labeled_data.txt")
 
 
 TRAIN_BATCH = DataGenerator(
-    data_source=DATA_SOURCE, pinyin_sep="-", data_type="train", model_type=MODEL_TYPE, feature_type=FEATURE_TYPE,
-    n_features=N_FEATURES, shuffle=SHUFFLE, batch_size=BATCH_SIZE, data_length=-1, vocab=PNY2ID
+    data_source=DATA_SOURCE, pinyin_sep="-", data_type="train", feed_model="speech", model_type=MODEL_TYPE,
+    feature_type=FEATURE_TYPE, n_features=N_FEATURES, shuffle=SHUFFLE, batch_size=BATCH_SIZE, data_length=-1,
+    vocab=PNY2ID
 )
 
 DEV_BATCH = DataGenerator(
-    data_source=DATA_SOURCE, pinyin_sep="-", data_type="dev", model_type=MODEL_TYPE, feature_type=FEATURE_TYPE,
-    n_features=N_FEATURES, shuffle=SHUFFLE, batch_size=BATCH_SIZE, data_length=10, vocab=PNY2ID
+    data_source=DATA_SOURCE, pinyin_sep="-", data_type="dev", feed_model="speech", model_type=MODEL_TYPE,
+    feature_type=FEATURE_TYPE, n_features=N_FEATURES, shuffle=SHUFFLE, batch_size=BATCH_SIZE, data_length=10,
+    vocab=PNY2ID
 )
 
 BATCH_NUM = len(TRAIN_BATCH)
@@ -51,26 +53,26 @@ if __name__ == "__main__":
     with graph.as_default():
         model = AcousticModel(vocab_size=VOCAB_SIZE, n_features=N_FEATURES,
                               inference_model_type=MODEL_TYPE, learning_rate=LEARNING_RATE, is_training=True)
-        model.model.summary()
+        model.inference_model.summary()
         K.set_session(get_session(graph=graph))
 
         if os.path.exists(AM_MODEL_DIR):
             print("Load acoustic model...")
-            model.model.load_weights(AM_MODEL_DIR)
+            model.ctc_model.load_weights(AM_MODEL_DIR)
 
         ckpt = "model_{epoch:02d}-{val_loss:.2f}.hdf5"
         checkpoint = ModelCheckpoint(
             filepath=os.path.join(AM_LOG_DIR, ckpt),
-            monitor="val_loss", save_weights_only=False,
+            monitor="val_acc", save_weights_only=False,
             verbose=1, save_best_only=True
         )
 
         model_name = "acoustic_model_{}".format(MODEL_TYPE)
         tensorboard = TensorBoard(log_dir=get_board_log_path(model_name), batch_size=BATCH_SIZE)
 
-        model.model.fit_generator(
+        model.ctc_model.fit_generator(
             TRAIN_BATCH, epochs=N_EPOCH, verbose=1,  callbacks=[checkpoint, tensorboard], steps_per_epoch=BATCH_NUM,
             validation_data=DEV_BATCH, validation_steps=200, use_multiprocessing=True, workers=4
         )
-        model.model.save_weights(AM_MODEL_DIR)
+        model.ctc_model.save_weights(AM_MODEL_DIR)
 
