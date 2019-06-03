@@ -39,7 +39,7 @@ TRAIN_BATCH = DataGenerator(
 
 DEV_BATCH = DataGenerator(
     data_source=DATA_SOURCE, pinyin_sep="-", data_type="dev", feed_model="speech", model_type=MODEL_TYPE,
-    feature_type=FEATURE_TYPE, n_features=N_FEATURES, shuffle=SHUFFLE, batch_size=BATCH_SIZE, data_length=10,
+    feature_type=FEATURE_TYPE, n_features=N_FEATURES, shuffle=SHUFFLE, batch_size=BATCH_SIZE, data_length=-1,
     vocab=PNY2ID
 )
 
@@ -74,5 +74,5 @@ if __name__ == "__main__":
             TRAIN_BATCH, epochs=N_EPOCH, verbose=1,  callbacks=[checkpoint, tensorboard], steps_per_epoch=BATCH_NUM,
             validation_data=DEV_BATCH, validation_steps=200, use_multiprocessing=True, workers=4
         )
-        model.ctc_model.save_weights(AM_MODEL_DIR)
+        model.ctc_model.save(AM_MODEL_DIR)
 

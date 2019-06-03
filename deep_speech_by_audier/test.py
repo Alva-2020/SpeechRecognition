@@ -34,15 +34,15 @@ if __name__ == "__main__":
     model = AcousticModel(vocab_size=VOCAB_SIZE, n_features=N_FEATURES,
                           inference_model_type=MODEL_TYPE, learning_rate=0., is_training=False)
     print("Load acoustic model...")
-    model.ctc_model.load_weights(AM_MODEL_DIR)
     K.set_session(get_session())
+    model.inference_model.load_weights(AM_MODEL_DIR, by_name=True)
+
     for i in range(10):
         print("%d th example" % i)
         inputs, _ = TEST_BATCH[i]  # inputs [BATCH_SIZE, N_FEATURES]
         x = inputs["the_inputs"]
-        y_true = inputs["the_labels"]
+        y_true = [ID2PNY[x] for x in inputs["the_labels"][0]]
         y_pred = model.inference_model.predict(x, batch_size=BATCH_SIZE, steps=1)
-        _, y_true = decode_ctc(y_true, ID2PNY)
         _, y_pred = decode_ctc(y_pred, ID2PNY)
 
         print("Original Result: %s" % "-".join(y_true))
