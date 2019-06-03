@@ -56,7 +56,7 @@ class DataGenerator(Sequence):
             self.data = self.data[: data_length]
 
         self.batch_size = batch_size
-        self.indexes = np.arange(len(self._data))
+        self.indexes = np.arange(len(self.data))
         self.feature_type = feature_type
         self.n_features = n_features
         self.feed_model = feed_model
