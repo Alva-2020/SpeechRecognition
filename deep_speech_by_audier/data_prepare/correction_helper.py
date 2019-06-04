@@ -90,8 +90,6 @@ for src in df["src"]:
         f.writelines(content)
 
 
-
-
 def _correction_dict(correction_file: str):
     d = {}
     with open(correction_file, "r", encoding="utf-8") as f:
