@@ -74,6 +74,12 @@ def _transform_thchs30(source_dir: str, correction_file: Optional[str]=None):
         yield Data(src=wav_file, content=content, pinyin=pinyin, partition=partition, data_source="thchs30")
 
 
+def _fix_no_tone(pny: str):
+    if pny[-1] not in ("1", "2", "3", "4"):  # 轻声处理
+        pny += "5"
+    return pny
+
+
 def _load_transcript_aishell(transcript_file: str) -> Dict[str, Tuple[str, str]]:
     res = {}
     with open(transcript_file, "r", encoding="utf-8") as f:
@@ -81,8 +87,9 @@ def _load_transcript_aishell(transcript_file: str) -> Dict[str, Tuple[str, str]]
             line = line.strip()
             if line:
                 wav_file, content = line.split(" ", maxsplit=1)
-                content = content.replace(" ", "")
-                pinyin = slug(content, style=Style.TONE3, separator="-")
+                content = content.upper().replace(" ", "")
+                pinyin = slug(content, style=Style.TONE3, separator=" ")
+                pinyin = "-".join([_fix_no_tone(pny) for pny in pinyin.split()])
                 res[wav_file] = (content, pinyin)
     return res
 
