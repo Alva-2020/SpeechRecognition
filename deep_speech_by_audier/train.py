@@ -49,7 +49,7 @@ BATCH_NUM = len(TRAIN_BATCH)
 if __name__ == "__main__":
     # print("AM_LOG_PATH: %s" % AM_LOG_DIR)
     tf.reset_default_graph()
-    model = AcousticModel(vocab_size=VOCAB_SIZE, n_features=N_FEATURES, gpu_num=2,
+    model = AcousticModel(vocab_size=VOCAB_SIZE, n_features=N_FEATURES, gpu_num=1,
                           inference_model_type=MODEL_TYPE, learning_rate=LEARNING_RATE, is_training=True)
     model.inference_model.summary()
     K.set_session(get_session())
