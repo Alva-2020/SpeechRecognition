@@ -2,7 +2,8 @@
 
 import os
 import platform
-from pypinyin import Style, pinyin_dict
+from pypinyin import Style
+from pypinyin.constants import PINYIN_DICT, PHRASES_DICT
 from pypinyin.core import to_fixed
 from typing import Dict
 
@@ -23,7 +24,8 @@ def _fix_pny(pny):
 
 
 def make_vocab() -> Dict[str, int]:
-    pinyin_values = ",".join(pinyin_dict.pinyin_dict.values()).split(",")
+    pinyin_values = ",".join(PINYIN_DICT.values()).split(",") + \
+                    [pny for words_pnys in PHRASES_DICT.values() for pny_list in words_pnys for pny in pny_list]
     all_pinyin = set([_fix_pny(pny) for pny in pinyin_values])
     all_pinyin = sorted(list(all_pinyin))
     constant_values = ["_"]
