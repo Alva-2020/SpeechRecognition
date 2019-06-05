@@ -48,31 +48,29 @@ BATCH_NUM = len(TRAIN_BATCH)
 
 if __name__ == "__main__":
     # print("AM_LOG_PATH: %s" % AM_LOG_DIR)
-    graph = tf.Graph()
     tf.reset_default_graph()
-    with graph.as_default():
-        model = AcousticModel(vocab_size=VOCAB_SIZE, n_features=N_FEATURES, gpu_num=1,
-                              inference_model_type=MODEL_TYPE, learning_rate=LEARNING_RATE, is_training=True)
-        model.inference_model.summary()
-        K.set_session(get_session(graph=graph))
+    model = AcousticModel(vocab_size=VOCAB_SIZE, n_features=N_FEATURES, gpu_num=1,
+                          inference_model_type=MODEL_TYPE, learning_rate=LEARNING_RATE, is_training=True)
+    model.inference_model.summary()
+    K.set_session(get_session())
 
-        if os.path.exists(AM_MODEL_DIR):
-            print("Load acoustic model...")
-            model.ctc_model.load_weights(AM_MODEL_DIR)
+    if os.path.exists(AM_MODEL_DIR):
+        print("Load acoustic model...")
+        model.ctc_model.load_weights(AM_MODEL_DIR)
 
-        ckpt = "model_{epoch:02d}-{val_loss:.2f}.hdf5"
-        checkpoint = ModelCheckpoint(
-            filepath=os.path.join(AM_LOG_DIR, ckpt),
-            monitor="val_loss", save_weights_only=False,
-            verbose=1, save_best_only=True
-        )
+    ckpt = "model_{epoch:02d}-{val_loss:.2f}.hdf5"
+    checkpoint = ModelCheckpoint(
+        filepath=os.path.join(AM_LOG_DIR, ckpt),
+        monitor="val_loss", save_weights_only=False,
+        verbose=1, save_best_only=True
+    )
 
-        model_name = "acoustic_model_{}".format(MODEL_TYPE)
-        tensorboard = TensorBoard(log_dir=get_board_log_path(model_name), batch_size=BATCH_SIZE)
+    model_name = "acoustic_model_{}".format(MODEL_TYPE)
+    tensorboard = TensorBoard(log_dir=get_board_log_path(model_name), batch_size=BATCH_SIZE)
 
-        model.ctc_model.fit_generator(
-            TRAIN_BATCH, epochs=N_EPOCH, verbose=1,  callbacks=[checkpoint, tensorboard], steps_per_epoch=BATCH_NUM,
-            validation_data=DEV_BATCH, validation_steps=200, use_multiprocessing=False, workers=1
-        )
-        model.ctc_model.save(AM_MODEL_DIR)
+    model.ctc_model.fit_generator(
+        TRAIN_BATCH, epochs=N_EPOCH, verbose=1,  callbacks=[checkpoint, tensorboard], steps_per_epoch=BATCH_NUM,
+        validation_data=DEV_BATCH, validation_steps=200, use_multiprocessing=False, workers=1
+    )
+    model.ctc_model.save(AM_MODEL_DIR)
 
