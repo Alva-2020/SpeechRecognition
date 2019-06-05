@@ -126,9 +126,11 @@ class AcousticModel(object):
         self.loss = Lambda(function=self.ctc_loss, name="ctc_loss")([self.labels, self.y_pred, self.input_length, self.label_length])  # function 只接受一个占位输入
         self.ctc_model = Model(inputs=[self.inputs, self.labels, self.input_length, self.label_length], outputs=self.loss)
         if self.gpu_num > 1:
-            self.ctc_model = multi_gpu_model(model=self.ctc_model, gpus=self.gpu_num)
+            self.train_model = multi_gpu_model(model=self.ctc_model, gpus=self.gpu_num)
+        else:
+            self.train_model = self.ctc_model
 
-        self.ctc_model.compile(
+        self.train_model.compile(
             optimizer=Adam(lr=self.lr, beta_1=0.9, beta_2=0.999, decay=0.01, epsilon=1e-7),
             # 这里的outputs就是loss，而不是基于inputs和outputs计算的损失
             # key的名称必须是层的名称，如上文中的ctc_loss
