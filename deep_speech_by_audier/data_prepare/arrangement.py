@@ -99,8 +99,9 @@ def _transform_aishell(source_dir: str, correction_file: Optional[str]=None):
     for partition in ["train", "test", "dev"]:
         for wav_file in tqdm.tqdm(glob.glob(os.path.join(wav_dir, partition, "*/*.wav"))):
             filename, _ = os.path.splitext(os.path.basename(wav_file))
-            content, pinyin = file_content_mapping[filename]
-            yield Data(src=wav_file, content=content, pinyin=pinyin, partition=partition, data_source="aishell")
+            if filename in file_content_mapping:
+                content, pinyin = file_content_mapping[filename]
+                yield Data(src=wav_file, content=content, pinyin=pinyin, partition=partition, data_source="aishell")
 
 
 def transform(args):
@@ -134,6 +135,6 @@ if __name__ == "__main__":
     transform(args)
 
     # python arrangement.py
-    #   --thchs30 "/data/zhaochengming/data/data_source/Speech/THCHS30/data_thch30"
+    #   --thchs30 "/data/zhaochengming/data/data_source/Speech/THCHS30/data_thchs30"
     #   --aishell "/data/zhaochengming/data/data_source/Speech/aishell/data_aishell"
     #   --output "/data/zhaochengming/data/data_source/Speech/labeled_data.txt"
