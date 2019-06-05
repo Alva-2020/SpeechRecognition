@@ -47,7 +47,7 @@ BATCH_NUM = len(TRAIN_BATCH)
 
 
 if __name__ == "__main__":
-    print("AM_LOG_PATH: %s" % AM_LOG_DIR)
+    # print("AM_LOG_PATH: %s" % AM_LOG_DIR)
     graph = tf.Graph()
     tf.reset_default_graph()
     with graph.as_default():
@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
         model.ctc_model.fit_generator(
             TRAIN_BATCH, epochs=N_EPOCH, verbose=1,  callbacks=[checkpoint, tensorboard], steps_per_epoch=BATCH_NUM,
-            validation_data=DEV_BATCH, validation_steps=200, use_multiprocessing=True, workers=4
+            validation_data=DEV_BATCH, validation_steps=200, use_multiprocessing=False, workers=1
         )
         model.ctc_model.save(AM_MODEL_DIR)
 
