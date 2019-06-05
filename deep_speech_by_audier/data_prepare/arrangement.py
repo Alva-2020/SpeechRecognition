@@ -8,7 +8,8 @@ import tqdm
 import platform
 import argparse
 from collections import namedtuple
-from typing import Optional
+from pypinyin import slug, Style
+from typing import Optional, Dict
 
 system = platform.system().lower()
 sys.path.append("F:/Code projects/Python/SpeechRecognition" if system == "windows"
@@ -73,8 +74,17 @@ def _transform_thchs30(source_dir: str, correction_file: Optional[str]=None):
         yield Data(src=wav_file, content=content, pinyin=pinyin, partition=partition, data_source="thchs30")
 
 
-def _load_transcript_aishell(transcript_file: str):
-
+def _load_transcript_aishell(transcript_file: str) -> Dict[str, (str, str)]:
+    res = {}
+    with open(transcript_file, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                wav_file, content = line.split(" ", maxsplit=1)
+                content = content.replace(" ", "")
+                pinyin = slug(content, style=Style.TONE3, separator="-")
+                res[wav_file] = (content, pinyin)
+    return res
 
 
 def _transform_aishell(source_dir: str, correction_file: Optional[str]=None):
@@ -83,28 +93,35 @@ def _transform_aishell(source_dir: str, correction_file: Optional[str]=None):
     :param source_dir: 下载好的 data_aishell 文件夹地址
     :param correction_file: 纠错表，线下整理生成
     """
-    data_dir = os.path.join(source_dir, "data_aishell")
-    resource_dir = os.path.join(source_dir, "resource_aishell")
-
-    transcript_file = glob.glob(os.path.join(data_dir, "transcript/*.txt"))[0]
-    wav_dir = os.path.join(data_dir, "wav")
-
-
+    transcript_file = glob.glob(os.path.join(source_dir, "transcript/*.txt"))[0]
+    wav_dir = os.path.join(source_dir, "wav")
+    file_content_mapping = _load_transcript_aishell(transcript_file)
+    for partition in ["train", "test", "dev"]:
+        for wav_file in tqdm.tqdm(glob.glob(os.path.join(wav_dir, partition, "*/*.wav"))):
+            filename, _ = os.path.splitext(os.path.basename(wav_file))
+            content, pinyin = file_content_mapping[filename]
+            yield Data(src=wav_file, content=content, pinyin=pinyin, partition=partition, data_source="aishell")
 
 
 def transform(args):
-    if args.thchs30:
-        source_dir, *files = args.thchs30
-        if files:
-            correction_file, *output_file = files
-            if not output_file:
-                output_file = os.path.join(DATA_SOURCE_DIR, "labeled_data.txt")
-        else:
-            correction_file = os.path.join(source_dir, "pinyin_correction.txt")
-            output_file = os.path.join(DATA_SOURCE_DIR, "labeled_data.txt")
+    output_file = args.output if args.output else os.path.join(DATA_SOURCE_DIR, "labeled_data.txt")
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        _transform_thchs30(source_dir, output_file, correction_file)
-fw.write("\t".join([wav_file, content, pinyin, partition]) + "\n")
+    stream = []
+
+    if args.thchs30:
+        source_dir, *correction_file = args.thchs30
+        correction_file = correction_file[0] if correction_file else os.path.join(source_dir, "pinyin_correction.txt")
+        stream.append(_transform_thchs30(source_dir, correction_file))
+
+    if args.aishell:
+        source_dir, *correction_file = args.aishell
+        correction_file = correction_file[0] if correction_file else None
+        stream.append(_transform_aishell(source_dir, correction_file))
+
+    with open(output_file, "w", encoding="utf-8") as fw:
+        for g in stream:
+            for wav_file, content, pinyin, partition, data_source in g:
+                fw.write("\t".join([wav_file, content, pinyin, partition, data_source]) + "\n")
 
 
 if __name__ == "__main__":
@@ -117,6 +134,6 @@ if __name__ == "__main__":
     transform(args)
 
     # python arrangement.py
-    #   --thchs30 "/data/zhaochengming/data/data_source/Speech/THCHS30"
-    #   --aishell "/data/zhaochengming/data/data_source/Speech/aishell"
+    #   --thchs30 "/data/zhaochengming/data/data_source/Speech/THCHS30/data_thch30"
+    #   --aishell "/data/zhaochengming/data/data_source/Speech/aishell/data_aishell"
     #   --output "/data/zhaochengming/data/data_source/Speech/labeled_data.txt"

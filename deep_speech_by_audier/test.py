@@ -41,7 +41,7 @@ if __name__ == "__main__":
     result_file = os.path.join(DATA_SOURCE_DIR, "test_result.txt")
     if not os.path.exists(result_file):
         with open(result_file, "w", encoding="utf-8") as f:
-            for i in tqdm.tqdm(range(len(TEST_BATCH)), total=len(TEST_BATCH)):
+            for i in tqdm(range(len(TEST_BATCH)), total=len(TEST_BATCH)):
                 inputs, _ = TEST_BATCH[i]  # inputs [BATCH_SIZE, N_FEATURES]
                 src = TEST_BATCH.data[i, 0]
                 x = inputs["the_inputs"]
