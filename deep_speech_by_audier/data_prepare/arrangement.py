@@ -9,7 +9,7 @@ import platform
 import argparse
 from collections import namedtuple
 from pypinyin import slug, Style
-from typing import Optional, Dict
+from typing import Optional, Dict, Tuple
 
 system = platform.system().lower()
 sys.path.append("F:/Code projects/Python/SpeechRecognition" if system == "windows"
@@ -74,7 +74,7 @@ def _transform_thchs30(source_dir: str, correction_file: Optional[str]=None):
         yield Data(src=wav_file, content=content, pinyin=pinyin, partition=partition, data_source="thchs30")
 
 
-def _load_transcript_aishell(transcript_file: str) -> Dict[str, (str, str)]:
+def _load_transcript_aishell(transcript_file: str) -> Dict[str, Tuple[str, str]]:
     res = {}
     with open(transcript_file, "r", encoding="utf-8") as f:
         for line in f:
