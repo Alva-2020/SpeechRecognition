@@ -9,6 +9,7 @@ import platform
 import argparse
 from collections import namedtuple
 from pypinyin import slug, Style
+from _utils.nlp.u_nlp import DBC2SBC
 from typing import Optional, Dict, Tuple
 
 system = platform.system().lower()
@@ -75,8 +76,9 @@ def _transform_thchs30(source_dir: str, correction_file: Optional[str]=None):
 
 
 def _fix_no_tone(pny: str):
-    if pny[-1] not in ("1", "2", "3", "4"):  # 轻声处理
-        pny += "5"
+    if pny[-1] not in {"1", "2", "3", "4"}:  # 轻声处理
+        if pny.islower():
+            pny += "5"
     return pny
 
 
@@ -87,7 +89,7 @@ def _load_transcript_aishell(transcript_file: str) -> Dict[str, Tuple[str, str]]
             line = line.strip()
             if line:
                 wav_file, content = line.split(" ", maxsplit=1)
-                content = content.upper().replace(" ", "")
+                content = "".join([DBC2SBC(char) for char in content]).upper().replace(" ", "")
                 pinyin = slug(content, style=Style.TONE3, separator=" ")
                 pinyin = "-".join([_fix_no_tone(pny) for pny in pinyin.split()])
                 res[wav_file] = (content, pinyin)
