@@ -47,7 +47,7 @@ class DataGenerator(Sequence):
         """
         self._data = pd.read_csv(
             data_source, sep="\t", encoding="utf-8", header=None, engine="python",
-            names=["src", "content", "pinyin", "data_type"]
+            names=["src", "content", "pinyin", "data_type", "data_source"]
         ).query("data_type == '%s'" % data_type)
         self.data = self._data[["src", "pinyin"]].values if feed_model == "speech"\
             else self._data[["pinyin", "content"]].values
