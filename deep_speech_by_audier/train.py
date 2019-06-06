@@ -8,7 +8,7 @@ sys.path.append("F:/Code projects/Python/SpeechRecognition" if system == "window
                 else "/data/zhaochengming/projects/SpeechRecognition")
 from tensorflow.python.keras.callbacks import ModelCheckpoint, TensorBoard
 from tensorflow.python.keras import backend as K
-from deep_speech_by_audier.constant import make_vocab, DATA_SOURCE_DIR, AM_LOG_DIR, AM_MODEL_DIR
+from deep_speech_by_audier.constant import make_pny_vocab, DATA_SOURCE_DIR, AM_LOG_DIR, AM_MODEL_DIR
 from deep_speech_by_audier.input_data import DataGenerator
 from deep_speech_by_audier.model.speech import AcousticModel
 from deep_speech_by_audier.model.utils import get_session
@@ -18,7 +18,7 @@ import tensorflow as tf
 
 
 K.clear_session()
-PNY2ID: Dict[str, int] = make_vocab()
+PNY2ID: Dict[str, int] = make_pny_vocab()
 ID2PNY: Dict[int, str] = {id_: pny for pny, id_ in PNY2ID.items()}
 SHUFFLE = True
 FEATURE_TYPE = "fbank"
@@ -34,13 +34,13 @@ DATA_SOURCE = os.path.join(DATA_SOURCE_DIR, "labeled_data.txt")
 TRAIN_BATCH = DataGenerator(
     data_source=DATA_SOURCE, pinyin_sep="-", data_type="train", feed_model="speech", model_type=MODEL_TYPE,
     feature_type=FEATURE_TYPE, n_features=N_FEATURES, shuffle=SHUFFLE, batch_size=BATCH_SIZE, data_length=-1,
-    vocab=PNY2ID
+    am_vocab=PNY2ID
 )
 
 DEV_BATCH = DataGenerator(
     data_source=DATA_SOURCE, pinyin_sep="-", data_type="dev", feed_model="speech", model_type=MODEL_TYPE,
     feature_type=FEATURE_TYPE, n_features=N_FEATURES, shuffle=SHUFFLE, batch_size=BATCH_SIZE, data_length=-1,
-    vocab=PNY2ID
+    am_vocab=PNY2ID
 )
 
 BATCH_NUM = len(TRAIN_BATCH)

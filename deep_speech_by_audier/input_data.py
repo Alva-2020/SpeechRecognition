@@ -38,7 +38,8 @@ def compute_fbank(file, time_window=400, time_step: int = 10):
 
 class DataGenerator(Sequence):
     def __init__(self, data_source: str, pinyin_sep: str, data_type: str, batch_size: int, feature_type: str, n_features: int,
-                 feed_model: str, model_type: str, shuffle: bool=False, data_length: Optional[int]=None, vocab: Optional[Dict[str, int]]=None):
+                 feed_model: str, model_type: str, shuffle: bool=False, data_length: Optional[int]=None,
+                 am_vocab: Optional[Dict[str, int]]=None, lm_vocab: Optional[Dict[str, int]]=None):
         """
         :param data_source: 结构化标注数据源位置
         :param data_type: 指明取哪部分，[train, test, dev]
@@ -62,7 +63,8 @@ class DataGenerator(Sequence):
         self.feed_model = feed_model
         self.model_type = model_type
         self.shuffle = shuffle
-        self.am_vocab: Dict[str, int] = vocab if vocab else self._make_am_vocab(self.data["pinyin"], sep=pinyin_sep)
+        self.am_vocab: Dict[str, int] = am_vocab if am_vocab else self._make_am_vocab(self.data["pinyin"], sep=pinyin_sep)
+        self.lm_vocab: Dict[str, int] = lm_vocab if lm_vocab else self._make_lm_vocab(self.data["content"])
         self.pinyin_sep = pinyin_sep
 
     def __len__(self):
@@ -83,8 +85,18 @@ class DataGenerator(Sequence):
             }
             outputs = np.zeros(shape=(len(input_length),))  # 一个空的输出用来占位满足keras.Model的fit_generator 输入API
             return inputs, outputs
+        elif self.feed_model == "language":
+            max_len = max([len(content) for content in batch_data[:, 1]])  # content 和拼音长度一致，任选一列求最大长度都可，content字符串长度就代表总长，所以选该列
+            pnys_list, words_list = np.zeros(shape=(len(batch_data), max_len)), np.zeros(shape=(len(batch_data), max_len))
+            for i, (pnys, words) in enumerate(batch_data):
+                pnys = [self.am_vocab[pny] for pny in pnys.split(self.pinyin_sep)]
+                pnys_list[i, :len(pnys)] = pnys
+
+                words = [self.lm_vocab[word] for word in words]
+                words_list[i, :len(words)] = words
+            return pnys_list, words_list
         else:
-            pass
+            raise ValueError("Invalid model type %s available choices are 'model' or 'language'" % self.feed_model)
 
     def on_epoch_end(self):
         """在每次epoch结束时进行何种操作"""
@@ -114,8 +126,20 @@ class DataGenerator(Sequence):
     @staticmethod
     def _make_am_vocab(pny_data_list, sep=" ") -> Dict[str, int]:
         all_pny = sorted(list(set(sep.join(pny_data_list).split(sep))))
-        all_pny.insert(0, "_")
+        constants = ["_"]
+        numbers = [str(i) for i in range(10)]
+        letters = [chr(s) for s in range(ord("A"), ord("Z") + 1)]
+        all_pny = list(dict.fromkeys(constants + numbers + letters + all_pny))
         return {pny: i for i, pny in enumerate(all_pny)}
+
+    @staticmethod
+    def _make_lm_vocab(content_data_list) -> Dict[str, int]:
+        all_words = sorted(list(set("".join(content_data_list))))
+        constants = ["<PAD>"]
+        numbers = [str(i) for i in range(10)]
+        letters = [chr(s) for s in range(ord("A"), ord("Z") + 1)]
+        all_words = list(dict.fromkeys(constants + numbers + letters + all_words))
+        return {word: i for i, word in enumerate(all_words)}
 
     @staticmethod
     def _wav_padding(wav_data_list: List[np.ndarray]) -> (np.ndarray, np.ndarray):

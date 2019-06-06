@@ -1,5 +1,4 @@
 
-from tensorflow import shape as tf_shape
 from tensorflow.python.keras.layers import Conv2D, BatchNormalization, Input, MaxPooling2D, Dense, Dropout, Reshape, Flatten, GRU, add, Lambda
 from tensorflow.python.keras.optimizers import Adam
 from tensorflow.python.keras.models import Model
