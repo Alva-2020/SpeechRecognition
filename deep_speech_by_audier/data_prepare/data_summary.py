@@ -5,13 +5,15 @@ import argparse
 from scipy.io import wavfile
 
 
-def total_wav_length(dir: str) -> float:
+def total_wav_length(dir: str):
     total_seconds = 0
+    n_files = 0
     for file in glob.iglob(os.path.join(dir, "**/*.wav"), recursive=True):
         fs, audio = wavfile.read(file)
         seconds = len(audio) / fs
         total_seconds += seconds
-    print("%s: %.2f hrs" % (dir, total_seconds / 3600))
+        n_files += 1
+    print("%s\t total files: %d, total hours: %.2f hrs" % (dir, n_files, total_seconds / 3600))
 
 
 if __name__ == "__main__":
