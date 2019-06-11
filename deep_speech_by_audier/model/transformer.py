@@ -1,7 +1,9 @@
 
 import tensorflow as tf
 from tensorflow.contrib.layers import xavier_initializer
+from tensorflow.contrib.training import HParams
 from typing import Optional, List
+
 
 def normalize(inputs: tf.Tensor, epsilon:float=1e-8, scope: str="ln", reuse: Optional[bool]=None):
     """ Normalize tensor
@@ -109,14 +111,14 @@ def multihead_attention(emb: tf.Tensor, queries: tf.Tensor, keys: tf.Tensor, num
         # Scale
         outputs *= (num_units / num_heads) ** 0.5
 
-        # Causality = Future blinding
+        # Key masking
+        # Causality = future blinding
         if causality:
             diag_vals = tf.ones_like(outputs[0, :, :])  # [T_q, T_k]
             tril = tf.linalg.LinearOperatorLowerTriangular(diag_vals).to_dense()  # 取下三角  [T_q, T_k]
             tril = tf.expand_dims(tril, axis=0)  # [1, T_q, T_k]
             key_masks = tf.tile(tril, multiples=[tf.shape(outputs)[0], 1, 1])  # [h * N, T_q, T_k]
         else:
-            # Key masking
             key_masks = tf.sign(tf.abs(tf.reduce_sum(emb, axis=-1)))  # [N, T_k]
             key_masks = tf.expand_dims(tf.tile(key_masks, multiples=[num_heads, 1]), axis=1)  # [h * N, 1, T_k]
             key_masks = tf.tile(key_masks, multiples=[1, tf.shape(queries)[1], 1])  # [h * N, T_q, T_k]
@@ -129,38 +131,116 @@ def multihead_attention(emb: tf.Tensor, queries: tf.Tensor, keys: tf.Tensor, num
         # Activation
         outputs = tf.nn.softmax(outputs)  # [h * N, T_q, T_k]
 
+        # Query masking
+        query_masks = tf.sign(tf.abs(tf.reduce_sum(emb, axis=-1)))  # [N, T_q]
+        query_masks = tf.expand_dims(tf.tile(query_masks, multiples=[num_heads, 1]), axis=-1)  # [h * N, T_q, 1]
+        query_masks = tf.tile(query_masks, multiples=[1, 1, tf.shape(keys)[1]])  # [h * N, T_q, T_k]
+        outputs *= query_masks  # [h * N, T_q, T_k]
+
+        # Dropout
+        outputs = tf.layers.dropout(outputs, rate=dropout_rate, training=is_training)  # [h * N, T_q, T_k]
+
+        # Weighted sum
+        outputs = tf.matmul(outputs, V_)  # [h * N, T_q, C / h]
+
+        # Restore shape
+        outputs = tf.concat(tf.split(outputs, num_or_size_splits=num_heads, axis=0), axis=2)  # [N, T_q, C]
+
+        # Residual connection
+        outputs += queries
+
+        # Normalize
+        outputs = normalize(outputs)
+
+    return outputs
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+def default_hparams():
+    params = HParams(
+        num_heads=8,
+        num_blocks=6,
+        input_vocab_size=50,
+        label_vocab_size=50,
+        max_length=100,
+        hidden_units=512,
+        dropout_rate=0.2,
+        learning_rate=3e-4,
+        is_training=True
+    )
+    return params
 
 
 class LanguageModel(object):
 
-    def __init__(self, is_training: bool=True, hidden_units: int=512, learning_rate: float=3e-4):
+    def __init__(self, num_heads: int=8, num_blocks: int=6, input_vocab_size: int=50,
+                 label_vocab_size: int=50, max_length: int=100, hidden_units: int=512,
+                 dropout_rate: float=0.2, learning_rate: float=3e-4, is_training: bool=True):
+        self.num_heads = num_heads
+        self.num_blocks = num_blocks
+        self.input_vocab_size = input_vocab_size
+        self.label_vocab_size = label_vocab_size
+        self.max_length = max_length
+        self.hidden_units = hidden_units
+        self.dropout_rate = dropout_rate
+        self.learning_rate = learning_rate
+        self.is_training = is_training
+        self.graph = self._build_graph()
+
+    def _build_graph(self):
+        graph = tf.Graph()
+        tf.reset_default_graph()
+        with graph.as_default():
+            with tf.name_scope("input"):
+                self.x = tf.placeholder(dtype=tf.int32, shape=[None, None], name="x")  # [batch, max_length]
+                self.y = tf.placeholder(dtype=tf.int32, shape=[None, None], name="y")
+
+            emb = embedding(inputs=self.x, vocab_size=self.input_vocab_size, emb_size=self.hidden_units,
+                            zero_pad=True, scale=True, scope="embedding", reuse=None)
+            with tf.name_scope("encoding"):
+                x_ = tf.range(tf.shape(self.x)[1])  # [max_length, ]
+                x_ = tf.expand_dims(x_, axis=0)  # [1, max_length]
+                x_ = tf.tile(x_, multiples=[tf.shape(self.x)[0], 1])  # [batch, max_length]
+                enc = embedding(inputs=x_, vocab_size=self.max_length, emb_size=self.hidden_units,
+                                zero_pad=False, scale=False, scope="enc_pe", reuse=None)
+                enc += emb
+                enc = tf.layers.dropout(enc, rate=self.dropout_rate, training=self.is_training)
+
+            # blocks
+            for i in range(self.num_blocks):
+                with tf.variable_scope("num_blocks_{}".format(i)):
+                    # Multihead Attention
+                    enc = multihead_attention(emb=emb, queries=enc, keys=enc, num_units=self.hidden_units,
+                                              num_heads=self.num_heads, dropout_rate=self.dropout_rate,
+                                              is_training=self.is_training, causality=False)
+            # Feed Forward
+            self.outputs = feed_forward(inputs=enc, num_units=[4 * self.hidden_units, self.hidden_units])
+
+            # Final Linear Projection
+            with tf.name_scope("ACC cal"):
+                logits = tf.layers.dense(inputs=self.outputs, units=self.label_vocab_size, activation=None)
+                self.preds = tf.to_int32(tf.argmax(logits, axis=-1))
+                self.istarget = tf.to_float(tf.not_equal(self.y, 0))  # 去掉padding部分的计算
+                self.acc = tf.reduce_sum(tf.to_float(tf.equal(self.preds, self.y)) * self.istarget) / tf.reduce_sum(self.istarget)
+                tf.summary.scalar("acc", self.acc)
+
+            if self.is_training:
+                with tf.name_scope("loss"):
+                    y_smoothed = label_smoothing(inputs=tf.one_hot(self.y, depth=self.label_vocab_size))
+                    loss = tf.nn.softmax_cross_entropy_with_logits_v2(logits= logits, labels=y_smoothed)
+                    self.mean_loss = tf.reduce_sum(loss * self.istarget) / (tf.reduce_sum(self.istarget))
+
+                    self.global_step = tf.Variable(0, name="global_step", trainable=False)
+                    opt = tf.train.AdamOptimizer(learning_rate=self.learning_rate, beta1=0.9, beta2=0.98, epsilon=1e-8)
+                    self.train_op = opt.minimize(self.mean_loss, global_step=self.global_step)
+
+                    tf.summary.scalar("mean_loss", self.mean_loss)
+                    self.merged = tf.summary.merge_all()
+
+        return graph
+
+
+
+
+
 
 
