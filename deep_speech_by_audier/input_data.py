@@ -63,8 +63,8 @@ class DataGenerator(Sequence):
         self.feed_model = feed_model
         self.model_type = model_type
         self.shuffle = shuffle
-        self.am_vocab: Dict[str, int] = am_vocab if am_vocab else self._make_am_vocab(self.data["pinyin"], sep=pinyin_sep)
-        self.lm_vocab: Dict[str, int] = lm_vocab if lm_vocab else self._make_lm_vocab(self.data["content"])
+        self.am_vocab: Dict[str, int] = am_vocab if am_vocab else self._make_am_vocab(self._data["pinyin"], sep=pinyin_sep)
+        self.lm_vocab: Dict[str, int] = lm_vocab if lm_vocab else self._make_lm_vocab(self._data["content"])
         self.pinyin_sep = pinyin_sep
 
     def __len__(self):
