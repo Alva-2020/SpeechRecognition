@@ -41,7 +41,7 @@ if __name__ == "__main__":
     model.inference_model.load_weights(AM_MODEL_DIR)
     result_file = os.path.join(DATA_SOURCE_DIR, "test_result.txt")
     if os.path.exists(result_file):  # 如果存在文件就先删除
-        os.removedirs(result_file)
+        os.remove(result_file)
 
     lines = []
     total_wer = 0.0
