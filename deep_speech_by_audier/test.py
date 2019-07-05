@@ -50,7 +50,7 @@ if __name__ == "__main__":
         src = TEST_BATCH.data[i, 0]
         x = inputs["the_inputs"]
         y_true = [ID2PNY[x] for x in inputs["the_labels"][0]]
-        y_pred = model.inference_model.predict(x, batch_size=BATCH_SIZE, steps=1)
+        y_pred = model.inference_model.predict(x, batch_size=BATCH_SIZE, steps=1, use_multiprocessing=True)
         _, y_pred = decode_ctc(y_pred, ID2PNY)
         diff = _levenshtein(y_true, y_pred)
         wer = diff / len(y_true)
