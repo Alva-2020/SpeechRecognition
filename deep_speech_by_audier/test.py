@@ -27,7 +27,7 @@ MODEL_TYPE = "DFCNN"
 BATCH_SIZE = 1
 DATA_SOURCE = os.path.join(DATA_SOURCE_DIR, "labeled_data.txt")
 TEST_BATCH = DataGenerator(
-    data_source=DATA_SOURCE, pinyin_sep="-", data_type="test", feed_model="speech", model_type=MODEL_TYPE,
+    data_source=DATA_SOURCE, pinyin_sep="-", data_type="dev", feed_model="speech", model_type=MODEL_TYPE,
     feature_type=FEATURE_TYPE, n_features=N_FEATURES, shuffle=False, batch_size=BATCH_SIZE, data_length=-1,
     am_vocab=PNY2ID
 )
