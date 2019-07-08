@@ -57,10 +57,10 @@ if __name__ == "__main__":
         total_wer += wer
         lines.append([src, y_true, y_pred, wer])
 
-    print("Test AVG wer: %.4f" % total_wer / len(TEST_BATCH))
+    print("Test AVG wer: %.4f" % (total_wer / len(TEST_BATCH)))
     with open(result_file, "w", encoding="utf-8") as f:
         for src, y_true, y_pred, wer in lines:
             y_true = " ".join(y_true)
             y_pred = " ".join(y_pred)
-            f.write("\t".join([src, y_true, y_pred, wer] + "\n"))
+            f.write("\t".join([src, y_true, y_pred, wer]) + "\n")
 
