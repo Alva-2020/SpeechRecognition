@@ -22,8 +22,8 @@ class AudioFeaturizer(object):
     """
     def __init__(self,
                  specgram_type: str="linear",
-                 stride_ms: int=10,
-                 window_ms: int=20,
+                 stride_ms: float=10.,
+                 window_ms: float=20.,
                  max_freq: Optional[float]=None,
                  target_sample_rate: int=16000,
                  use_dB_normalization: bool=True,
