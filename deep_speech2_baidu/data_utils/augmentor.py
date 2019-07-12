@@ -1,7 +1,7 @@
 
 import random
 import json
-from deep_speech2_baidu.data_utils.data import read_data
+from deep_speech2_baidu.data_utils.utility import read_data
 from deep_speech2_baidu.data_utils.segments import AudioSegment, SpeechSegment
 from abc import ABCMeta, abstractmethod
 from typing import Union, Dict, List

@@ -2,16 +2,16 @@
 
 import numpy as np
 import random
-from deep_speech2_baidu.data_utils.data import read_data
+from deep_speech2_baidu.data_utils.utility import read_data
 from deep_speech2_baidu.data_utils.segments import AudioSegment
-from typing import Optional, Callable
+from typing import Optional, Callable, List, Dict
 
 
 class FeatureNormalizer(object):
     """
     Feature normalizer. Normalize features to be of zero mean and unit stddev.
 
-    if `mean_std_filepath` is provided (not None), the normalizer will directly initilize from the file.
+    if `mean_std_filepath` is provided (not None), the normalizer will directly initialize from the file.
     Otherwise, both `data_path` and `featurize_func` should be given for on-the-fly mean and stddev computing.
 
     :param mean_std_filepath: File containing the pre-computed mean and stddev.
@@ -19,8 +19,8 @@ class FeatureNormalizer(object):
     :param featurize_func: Function to extract features. It should be callable with `featurize_func(audio_segment)`.
     :param num_samples: Number of random samples for computing mean and stddev.
     :param random_seed: Random seed for sampling instances.
-    :raises ValueError: If both `mean_std_filepath` and `data_path`
-                        or both `mean_std_filepath` and `featurize_func` are None.
+    :raises ValueError: When `mean_std_filepath`  is None e.g. not loading from the file,
+                        `data_path` or and `featurize_func` which is necessary for computing is None.
     """
 
     def __init__(self,
@@ -43,4 +43,22 @@ class FeatureNormalizer(object):
 
     def _compute_mean_std(self, data_path: str, featurize_func: Callable, num_samples: int):
         """Compute mean and std from randomly sampled instances."""
-        data = read_data(data)
+        data: List[Dict] = read_data(data_path, to_dict=True)
+        sampled_data = self._rng.sample(data, num_samples)
+        features = []
+        for instance in sampled_data:
+            feature = featurize_func(AudioSegment.from_file(instance["src"]))  # [N_features, N_frames]
+            features.append(feature)
+        features = np.hstack(features)  # [N_features, Total_frames]
+        self._mean = np.mean(features, axis=1, keepdims=True)  # [N_features, 1]
+        self._std = np.std(features, axis=1, keepdims=True)  # [N_features, 1]
+
+    def write_to_file(self, filepath: str):
+        """Write the mean and std to the file"""
+        np.savez(filepath, mean=self._mean, std=self._std)
+
+    def _read_mean_std_from_file(self, filepath: str):
+        """Load mean and std from file."""
+        npzfile = np.load(filepath)
+        self._mean = npzfile["mean"]
+        self._std = npzfile["std"]

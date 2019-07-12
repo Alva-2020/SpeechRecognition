@@ -2,22 +2,15 @@
 """ 操作原始数据集，生成可用的结构化标注文件 """
 
 import os
-import sys
 import re
 import glob
 import tqdm
-import platform
 import argparse
 from scipy.io import wavfile
 from collections import namedtuple
 from pypinyin import slug, Style
 from _utils.nlp.u_nlp import DBC2SBC
 from typing import Optional, Dict, Tuple
-
-system = platform.system().lower()
-sys.path.append("F:/Code projects/Python/SpeechRecognition" if system == "windows"
-                else "/data/zhaochengming/projects/SpeechRecognition")
-
 from deep_speech2_baidu.constant import DATA_SOURCE_DIR
 
 Data = namedtuple("Data", ["src", "duration", "content", "pinyin", "partition", "data_source"])
