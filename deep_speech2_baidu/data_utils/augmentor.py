@@ -4,7 +4,7 @@ import json
 from deep_speech2_baidu.data_utils.data import read_data
 from deep_speech2_baidu.data_utils.segments import AudioSegment, SpeechSegment
 from abc import ABCMeta, abstractmethod
-from typing import Union
+from typing import Union, Dict, List
 
 
 class AugmentorBase(metaclass=ABCMeta):
@@ -188,6 +188,17 @@ class ImpulseResponseAugmentor(AugmentorBase):
         segment.convolve(impulse_segment=impulse_segment, allow_resample=True)
 
 
+_AUGMENT_TYPE_ALIAS = {
+    "volume": VolumePerturbAugmentor,
+    "shift": ShiftPertubAugmentor,
+    "speed": SpeedPertubAugmentor,
+    "resample": ResampleAugmentor,
+    "bayesian_normal": OnlineBayesianNormalizationAugmentor,
+    "noise": NoisePerturbAugmentor,
+    "impulse": ImpulseResponseAugmentor
+}
+
+
 class AugmentationPipeline(object):
     """
     Build a pre-processing pipeline with various augmentation models.Such a data augmentation pipeline is often
@@ -243,8 +254,30 @@ class AugmentationPipeline(object):
     """
     def __init__(self, augmentation_config: str, random_seed: int=0):
         self._rng = random.Random(random_seed)
+        self._augmentors, self._rates = self._parse_pipeline_from(augmentation_config)
 
+    def transform_audio(self, segment: Union[AudioSegment, SpeechSegment]) -> None:
+        """Run the pre-processing pipeline for data augmentation."""
+        for augmentor, rate in zip(self._augmentors, self._rates):
+            if self._rng.uniform(0., 1.) < rate:
+                augmentor.transform_audio(segment)
 
+    def _parse_pipeline_from(self, config_json: str):
+        """Parse the config json to build a augmentation pipelien."""
+        try:
+            configs: List[Dict] = json.loads(config_json)
+            augmentors = [
+                self._get_augmentor(config["type"], config["params"])
+                for config in configs
+            ]
+            rates = [config["prob"] for config in configs]
+        except Exception as e:
+            raise ValueError("Failed to parse the augmentation config json: %s" % str(e))
+        return augmentors, rates
 
-
-
+    def _get_augmentor(self, augmentor_type: str, params: Dict):
+        """Return an augmentation model by the type name, and pass in params."""
+        params["rng"] = self._rng
+        if augmentor_type not in _AUGMENT_TYPE_ALIAS:
+            raise ValueError("Unknown augumentor type [%s]" % augmentor_type)
+        return _AUGMENT_TYPE_ALIAS[augmentor_type](**params)
