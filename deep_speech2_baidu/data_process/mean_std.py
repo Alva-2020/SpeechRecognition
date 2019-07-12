@@ -6,7 +6,7 @@ from deep_speech2_baidu.data_utils.featurizer.audio_featurizer import AudioFeatu
 from deep_speech2_baidu.data_utils.data import read_data
 
 
-def au
+
 
 
 if __name__ == "__main__":
