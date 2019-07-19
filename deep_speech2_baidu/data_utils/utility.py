@@ -35,5 +35,4 @@ def read_data(data_file: str, data_tag: Optional[str]=None, to_dict: bool=False)
         df = pd.read_csv(data_file, sep="\t", engine="python", encoding="utf-8", header=None, names=columns)
     if to_dict:
         return list(df.to_dict(orient="index").values())
-    else:
-        return df
+    return df
