@@ -5,19 +5,25 @@ from pypinyin import Style
 from pypinyin.constants import PINYIN_DICT, PHRASES_DICT
 from pypinyin.core import to_fixed
 from _utils.nlp.u_nlp import common_words
-from deep_speech2_baidu.data_utils.utility import read_data
+from deep_speech2.data_utils.utility import read_data
 from typing import List, Optional
 
 
 _VOCAB_COLUMN_ALIAS = {
         "pny": "pinyin",
-        "han": "text"
+        "han": "content"
 }
 
 _VOCAB_TYPES = list(_VOCAB_COLUMN_ALIAS.keys())
 
 
-def _fix_pny(pny):
+def get_vocab_column(vocab_type: str) -> str:
+    if vocab_type not in _VOCAB_TYPES:
+        raise ValueError("Unknown vocab type (%s), possible choices are %s" % (vocab_type, _VOCAB_TYPES))
+    return _VOCAB_COLUMN_ALIAS[vocab_type]
+
+
+def _fix_pny(pny: str) -> str:
     """ Modify the Mandarin pny with no tone in common popular sources. """
     pny = to_fixed(pny, strict=True, style=Style.TONE3)
     if pny[-1] not in ("1", "2", "3", "4"):  # 轻声处理
@@ -37,9 +43,7 @@ class VocabBuilder(object):
     # TODO: Add English support.
 
     def __init__(self, data_paths: Optional[List[str]]=None, vocab_type: str="pny", **params):
-        vocab_type = vocab_type.lower()
-        if vocab_type not in _VOCAB_TYPES:
-            raise ValueError("Unknown vocab type (%s), possible choices are %s" % (vocab_type, _VOCAB_TYPES))
+        self.column = get_vocab_column(vocab_type.lower())
         self.data_paths = data_paths
         self.vocab_type = vocab_type
         self.params = params
@@ -71,10 +75,9 @@ class VocabBuilder(object):
 
     def _make_vocab_from_files(self, data_paths: List[str]):
         """ Make a `counter` summary on sources """
-        column = _VOCAB_COLUMN_ALIAS[self.vocab_type]
         counter = Counter()
         for path in data_paths:
-            data = read_data(path, data_tag="labeled_data", to_dict=False)[column]
+            data = read_data(path, data_tag="labeled_data", to_dict=False)[self.column]
             for line in data:
                 line = line.split("-") if self.vocab_type == "pny" else line
                 counter.update(line)

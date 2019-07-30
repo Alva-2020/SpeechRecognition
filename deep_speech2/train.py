@@ -3,4 +3,4 @@
 
 import argparse
 import tensorflow as tf
-from deep_speech2_baidu.data_utils.utility import read_data
+from deep_speech2.data_utils.utility import read_data

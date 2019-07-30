@@ -1,6 +1,6 @@
 """Test decoders."""
 import unittest
-from deep_speech2_baidu.decoders import decoders_deprecated as decoder
+from deep_speech2.decoders import decoders_deprecated as decoder
 
 
 class TestDecoders(unittest.TestCase):

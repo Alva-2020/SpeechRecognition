@@ -2,8 +2,8 @@
 
 import numpy as np
 import random
-from deep_speech2_baidu.data_utils.utility import read_data
-from deep_speech2_baidu.data_utils.segments import AudioSegment
+from deep_speech2.data_utils.utility import read_data
+from deep_speech2.data_utils.segments import AudioSegment
 from typing import Optional, Callable, List, Dict
 
 

@@ -1,7 +1,7 @@
 """统计特征的 mean和 std，便于后续计算"""
 import argparse
-from deep_speech2_baidu.data_utils.featurizer.audio_featurizer import AudioFeaturizer
-from deep_speech2_baidu.data_utils.normalizer import FeatureNormalizer
+from deep_speech2.data_utils.featurizer.audio_featurizer import AudioFeaturizer
+from deep_speech2.data_utils.normalizer import FeatureNormalizer
 
 
 if __name__ == "__main__":

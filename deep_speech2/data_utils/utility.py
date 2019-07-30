@@ -1,4 +1,5 @@
 
+import os
 import pandas as pd
 from typing import Dict, Union, List, Optional
 
@@ -24,13 +25,14 @@ def read_data(data_file: str, data_tag: Optional[str]=None, to_dict: bool=False)
     :param to_dict: bool, whether output as a List[dict]
     :return: a pandas.dataframe | List[dict]
     """
+    if not os.path.isfile(data_file):
+        raise IOError("Invalid data source path %s" % data_file)
     if data_tag is None:
         df = pd.read_csv(data_file, sep="\t", engine="python", encoding="utf-8")
     else:
         data_tag = data_tag.lower()
         if data_tag not in _TAG_ALIAS:
-            raise ValueError("Unknown tag (%s) to load data. Possible choices are: %s" %
-                             (data_tag, " ".join(_TAG_NAMES)))
+            raise ValueError("Unknown tag (%s) to load data. Possible choices are: %s" % (data_tag, " ".join(_TAG_NAMES)))
         columns = _TAG_ALIAS[data_tag]
         df = pd.read_csv(data_file, sep="\t", engine="python", encoding="utf-8", header=None, names=columns)
     if to_dict:

@@ -1,9 +1,9 @@
 """Contains the speech featurizer class."""
 
 import numpy as np
-from deep_speech2_baidu.data_utils.featurizer.audio_featurizer import AudioFeaturizer
-from deep_speech2_baidu.data_utils.featurizer.text_featurizer import TextFeaturizer
-from deep_speech2_baidu.data_utils.segments import SpeechSegment
+from deep_speech2.data_utils.featurizer.audio_featurizer import AudioFeaturizer
+from deep_speech2.data_utils.featurizer.text_featurizer import TextFeaturizer
+from deep_speech2.data_utils.segments import SpeechSegment
 from typing import Optional, List
 
 

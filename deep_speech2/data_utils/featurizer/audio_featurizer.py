@@ -1,6 +1,6 @@
 
 import numpy as np
-from deep_speech2_baidu.data_utils.segments import AudioSegment, SpeechSegment
+from deep_speech2.data_utils.segments import AudioSegment, SpeechSegment
 from python_speech_features import mfcc, delta
 from typing import Optional, Union
 
@@ -51,7 +51,7 @@ class AudioFeaturizer(object):
         :param segment: Audio/speech segment to extract features from.
         :param allow_downsampling: Whether to allow audio downsampling before featurizing.
         :param allow_upsampling: Whether to allow audio upsampling before featurizing.
-        :return: Spectrogram audio feature in 2darray.
+        :return: Spectrogram audio feature in 2d array.
         :raises ValueError: If audio sample rate is not supported.
         """
         if (segment.sample_rate > self._target_sample_rate and allow_downsampling) or \

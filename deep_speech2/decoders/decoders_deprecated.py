@@ -10,14 +10,15 @@ from typing import Dict, Callable, Optional, List, Union
 ext_nproc_scorer: Optional[Callable] = None
 
 
-def ctc_greedy_decoder(probs_seq, vocabulary: Union[List[str], Dict[int, str]]) -> str:
+def ctc_greedy_decoder(probs_seq, blank_index: int, vocabulary=None) -> Union[str, List[int]]:
     """
     CTC Greedy (best path) decoder.
     Path consisting of the most probable tokens are further post-processed to remove consecutive repetitions and all blanks.
 
     :param probs_seq: 2-D list of probabilities over the vocabulary for each character.
                       Each element is a list of float probabilities for one character.
-    :param vocabulary: Vocabulary list.
+    :param blank_index: The index indicating the blank.
+    :param vocabulary: Vocabulary.
     :return: Decoding result string.
     """
     # dimension verification
@@ -34,11 +35,11 @@ def ctc_greedy_decoder(probs_seq, vocabulary: Union[List[str], Dict[int, str]]) 
     max_index_list = list(np.array(probs_seq).argmax(axis=1))
     # remove consecutive duplicate indexes
     index_list = [index_group[0] for index_group in groupby(max_index_list)]
-    # assign blank_id
-    blank_index = len(vocabulary)
-    # remove blank indexes
-    # convert index list to string
-    return ''.join([vocabulary[index] for index in index_list if index != blank_index])
+    if vocabulary:
+        # remove blank indexes
+        # convert index list to string
+        return "".join([vocabulary[index] for index in index_list if index != blank_index])
+    return index_list
 
 
 def ctc_beam_search_decoder(probs_seq, beam_size: int, vocabulary: Union[List[str], Dict[int, str]],

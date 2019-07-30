@@ -11,7 +11,7 @@ from collections import namedtuple
 from pypinyin import slug, Style
 from _utils.nlp.u_nlp import DBC2SBC
 from typing import Optional, Dict, Tuple
-from deep_speech2_baidu.constant import DATA_SOURCE_DIR
+from deep_speech2.constant import DATA_SOURCE_DIR
 
 Data = namedtuple("Data", ["src", "duration", "content", "pinyin", "partition", "data_source"])
 HAN_PATTERN = re.compile('[\u4e00-\u9fa5]')  # 汉字
