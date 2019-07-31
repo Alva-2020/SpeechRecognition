@@ -47,11 +47,11 @@ class FeatureNormalizer(object):
         sampled_data = self._rng.sample(data, num_samples)
         features = []
         for instance in sampled_data:
-            feature = featurize_func(AudioSegment.from_file(instance["src"]))  # [N_features, N_frames]
+            feature = featurize_func(AudioSegment.from_file(instance["src"]))  # [N_frames, N_features]
             features.append(feature)
-        features = np.hstack(features)  # [N_features, Total_frames]
-        self._mean = np.mean(features, axis=1, keepdims=True)  # [N_features, 1]
-        self._std = np.std(features, axis=1, keepdims=True)  # [N_features, 1]
+        features = np.vstack(features)  # [Total_frames, N_features]
+        self._mean = np.mean(features, axis=0, keepdims=True)  # [1, N_features]
+        self._std = np.std(features, axis=0, keepdims=True)  # [1, N_features]
 
     def write_to_file(self, filepath: str):
         """Write the mean and std to the file"""

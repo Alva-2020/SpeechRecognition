@@ -44,6 +44,11 @@ class AudioFeaturizer(object):
         self._use_dB_normalization = use_dB_normalization
         self._target_dB = target_dB
 
+    @property
+    def n_features(self):
+        """The expected `n_features` of the featurized audio specgram"""
+        return (self._window_ms / 1000 * self._target_sample_rate) // 2 + 1
+
     def featurize(self, segment: Union[AudioSegment, SpeechSegment],
                   allow_downsampling: bool=True, allow_upsampling: bool=True) -> np.ndarray:
         """
@@ -94,7 +99,10 @@ class AudioFeaturizer(object):
         d2_mfcc_feat = delta(d1_mfcc_feat, 2)  # n_frames * n_features
 
         concat_mfcc_feat = np.concatenate([np.transpose(feat) for feat in [mfcc_feat, d1_mfcc_feat, d2_mfcc_feat]])
-        return concat_mfcc_feat  # [3 * n_features, n_frames]
+
+        # in original script, no transpose, e.g. the shape is: [3 * n_features, n_frames]
+        # here the shape is: [n_frames, 3 * n_features]
+        return np.transpose(concat_mfcc_feat, (1, 0))
 
     @staticmethod
     def _specgram_real(samples: np.ndarray, stride_size: int, window_size: int, sample_rate: int):
@@ -114,20 +122,20 @@ class AudioFeaturizer(object):
 
         # window weighting, squared FFT, scaling
         weighting = np.hanning(window_size)[:, np.newaxis]
-        fft = np.abs(np.fft.rfft(windows * weighting, axis=0)) ** 2
+        fft = np.abs(np.fft.rfft(windows * weighting, axis=0)) ** 2  # shape: (window_size // 2 + 1, step_num)
         scale = np.sum(weighting ** 2) * sample_rate
         fft[1: -1, :] /= (scale / 2.)
         fft[(0, -1), :] /= scale
 
+        # length: window_size // 2 + 1
+        # max element is sample_rate / 2
         freqs = float(sample_rate) / window_size * np.arange(fft.shape[0])
         return fft, freqs
 
     def _compute_linear_specgram(self, samples: np.ndarray, sample_rate: int, stride_ms: float=10.,
                                  window_ms: float=20., max_freq: Optional[float]=None, eps: float=1e-14) -> np.ndarray:
         """Compute the linear spectrogram from FFT energy."""
-        if max_freq is None:
-            max_freq = sample_rate / 2
-        if max_freq > sample_rate / 2:
+        if max_freq is not None and max_freq > sample_rate / 2:
             raise ValueError("max freq must not be greater than half of sample rate e.g.(<= %f)" % (sample_rate / 2))
         if stride_ms > window_ms:
             raise ValueError("Stride must be not be greater than window.")
@@ -139,5 +147,19 @@ class AudioFeaturizer(object):
             stride_size=stride_size,
             window_size=window_size,
             sample_rate=sample_rate)
-        ind = np.where(freqs <= max_freq)[0][-1] + 1
-        return np.log(spectrum[: ind, :] + eps)
+
+        if max_freq is not None:
+            ind = np.where(freqs <= max_freq)[0][-1] + 1
+            specgram = np.log(spectrum[: ind, :] + eps)
+        else:
+            # default `max_freq = sample_rate / 2`
+            # which is the max of freqs, the ind is precisely the length of fft(spectrum)
+            # in original scripts, due to the floating-error,
+            # the ind could be smaller than the length of fft, often `length - 1`
+            # for which the features should be padded to same in the batch generator.
+            # The method here solves the problem to free from padding.
+            specgram = np.log(spectrum + eps)
+
+        # in original script, no transpose, e.g. the shape is same as fft result: [window_size // 2 + 1, step_num]
+        # here the shape is: [step_num, window_size // 2 + 1]
+        return np.transpose(specgram, (1, 0))

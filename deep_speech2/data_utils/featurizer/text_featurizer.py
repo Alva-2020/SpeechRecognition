@@ -1,7 +1,8 @@
 """Contains the text featurizer class."""
 
-import codecs
 from typing import Union, List, Dict
+
+_BLANK_INDEX = 0
 
 
 class TextFeaturizer(object):
@@ -38,9 +39,9 @@ class TextFeaturizer(object):
     def _load_vocabulary_from_file(vocab_filepath: str) -> (Dict[str, int], List[str]):
         """Load vocabulary from file"""
         vocab_list = []
-        with codecs.open(vocab_filepath, "r", encoding="utf-8") as f:
+        with open(vocab_filepath, "r", encoding="utf-8") as f:
             for line in f:
-                line = line.strip()
+                line = line[:-1]  # strip the "\n", "\r" chars
                 if line:
                     vocab_list.append(line)
 

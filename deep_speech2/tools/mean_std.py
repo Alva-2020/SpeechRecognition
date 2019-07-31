@@ -15,7 +15,7 @@ if __name__ == "__main__":
     featurizer = AudioFeaturizer(specgram_type=args.specgram_type)
 
     def feature_func(audio_segment):
-        featurizer.featurize(audio_segment, allow_upsampling=True, allow_downsampling=True)
+        return featurizer.featurize(audio_segment, allow_upsampling=True, allow_downsampling=True)
 
     normalizer = FeatureNormalizer(
         mean_std_filepath=None,

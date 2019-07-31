@@ -11,10 +11,13 @@ from typing import List, Optional
 
 _VOCAB_COLUMN_ALIAS = {
         "pny": "pinyin",
-        "han": "content"
+        "han": "content",
+        "eng": "content",
 }
 
 _VOCAB_TYPES = list(_VOCAB_COLUMN_ALIAS.keys())
+
+_BLANK_CHAR = "_"
 
 
 def get_vocab_column(vocab_type: str) -> str:
@@ -38,14 +41,16 @@ class VocabBuilder(object):
     :param vocab_type: The type of vocabulary to build, choices are `['pny', 'han']`.
                        If 'pny', the vocabulary is for the Mandarin pinyin,
                        If 'han', the vocabulary is for the Mandarin chars,
-    :raises ValueError: If `vocab_type` is not in `['pny', 'han']`.
+                       If 'eng', the vocabulary is for the English chars.
+    :raises ValueError: If `vocab_type` is not in `['pny', 'han', 'eng']`.
     """
-    # TODO: Add English support.
 
     def __init__(self, data_paths: Optional[List[str]]=None, vocab_type: str="pny", **params):
+        self.vocab_type = vocab_type.lower()
+        if vocab_type not in ["pny", "han", "eng"]:
+            raise ValueError("invalid `vocab_type` %s. Possible choices are `['pny', 'han', 'eng']`")
         self.column = get_vocab_column(vocab_type.lower())
         self.data_paths = data_paths
-        self.vocab_type = vocab_type
         self.params = params
 
     @staticmethod
@@ -73,6 +78,14 @@ class VocabBuilder(object):
         """
         return common_words()
 
+    @staticmethod
+    def make_eng_vocab() -> List[str]:
+        """
+        Build english chars vocab based on characters.
+        :return: List of english chars.
+        """
+        return [" "] + [chr(i) for i in range(ord("a"), ord("z") + 1)]
+
     def _make_vocab_from_files(self, data_paths: List[str]):
         """ Make a `counter` summary on sources """
         counter = Counter()
@@ -91,6 +104,8 @@ class VocabBuilder(object):
             return self.make_pny_vocab(False)
         elif self.vocab_type == "han":
             return self.make_han_vocab()
+        elif self.vocab_type == "eng":
+            return self.make_eng_vocab()
 
     def generate_vocab(self) -> List[str]:
         if self.data_paths:
@@ -100,16 +115,17 @@ class VocabBuilder(object):
 
 def save_vocab(vocab: List[str], filepath: str) -> None:
     with open(filepath, "w", encoding="utf-8") as f:
+        f.write(_BLANK_CHAR + "\n")  # add a blank char to the first for ctc decoder
         for char in vocab:
             f.write(char + "\n")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("data_paths", type=str, nargs="+", default=None, help="File paths for building vocabulary.")
-    parser.add_argument("count_threshold", type=int, default=0, help="Truncation threshold for element counts.")
-    parser.add_argument("vocab_type", type=str, choices=_VOCAB_TYPES, default="pny", help="the type of vocab.")
-    parser.add_argument("vocab_path", type=str, help="File path to write the vocabulary", required=True)
+    parser.add_argument("--data_paths", type=str, nargs="+", default=None, help="File paths for building vocabulary.")
+    parser.add_argument("--count_threshold", type=int, default=0, help="Truncation threshold for element counts.")
+    parser.add_argument("--vocab_type", type=str, choices=_VOCAB_TYPES, default="pny", help="the type of vocab.")
+    parser.add_argument("--vocab_path", type=str, help="File path to write the vocabulary", required=True)
     args = parser.parse_args()
 
     vocab_builder = VocabBuilder(

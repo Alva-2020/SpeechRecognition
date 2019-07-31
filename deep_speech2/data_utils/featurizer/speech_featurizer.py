@@ -47,6 +47,10 @@ class SpeechFeaturizer(object):
             vocab_filepath=vocab_filepath
         )
 
+    @property
+    def n_features(self):
+        return self._audio_featurizer.n_features
+
     def featurize(self, speech_segment: SpeechSegment, keep_transcription_text: bool) -> (np.ndarray, List):
         """
         Extract features for speech segment.
