@@ -68,6 +68,11 @@ class DataGenerator(object):
         self._rng = random.Random(random_seed)
         self._keep_transcription_text = keep_transcription_text
 
+    @property
+    def num_classes(self):
+        """Indicates the total classes."""
+        return self._speech_featurizer.vocab_size
+
     def process_utterance(self, audio_file: str, transcript: str) -> (np.ndarray, List):
         """
         Load, augment, featurize and normalize for speech data.

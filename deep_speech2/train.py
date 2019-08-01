@@ -2,30 +2,58 @@
 """Trainer for DeepSpeech2 model."""
 
 import os
+import sys
 import argparse
-import configparser
 import tensorflow as tf
 from deep_speech2.model_utils.model import Model
 from deep_speech2.data_utils.data import DataGenerator
-from typing import Optional, Dict
+from _utils.confighandler import ConfigHandler
+from typing import Optional, List, Dict, Any
 
 
-params_tree = {
-     "data": ["data_file", "vocab_file", "vocab_type", "mean_std_file"],
-     "feature": ["sample_rate", "window_ms", "stride_ms", "max_freq", "specgram_type", "use_dB_normalization"],
-     "model": ["rnn_hidden_size", "rnn_hidden_layers", "rnn_type", "fc_use_bias"],
-     "train": ["batch_size", "random_seed", "learning_rate", "model_path"]
-}
+def get_args(arg_parser: argparse.ArgumentParser, input_keys: List[str]=sys.argv[1:]) -> argparse.Namespace:
+    """
+    A process wrapper for parsed args
+    :param arg_parser: An `argparse.ArgumentParser` from argparse module.
+    :param input_keys: A list of chars input from command line, often `sys.argv[1:]`
+    :return: A namespace object.
+    """
+    args = arg_parser.parse_args()
+    argv = [arg.lstrip("--") for arg in input_keys if arg.startswith("--")]  # get the arg keys from command line.
+    given_args = {k: v for k, v in vars(args).items() if k in argv} if argv else {}  # input args from command line.
 
-
-def load_params(args: argparse.Namespace) -> Dict:
-    config = configparser.ConfigParser()
     if args.param_file:
-        if os.path.isfile(args.param_file):
-            config.read(args.param_file)
+        if os.path.exists(args.param_file):
+            # if the config file exists, read config from file
+            config = ConfigHandler.from_xml(args.param_file)
+            # and updated with given args input from command line.
+            if given_args:
+                config.update(given_args, ignore_keys=["param_file"])
+        else:
+            # if the config file doesn't exist, read config from parser
+            config = ConfigHandler.from_argparser(arg_parser, ignore_keys=["param_file"])
+            # and save to the xml file.
+            config.write(args.param_file)
+    else:
+        # if not given a config file, then read config from command line
+        config = ConfigHandler.from_argparser(arg_parser, ignore_keys=["param_file"])
+
+    args = config.get_args(as_namespace=True)
+    return args
 
 
+def get_data_params(args: argparse.Namespace) -> Dict[str, Any]:
+    return dict(
+        data_file=args.data_dir, batch_size=args.batch_size, vocab_file=args.vocab_file, vocab_type=args.vocab_type,
+        mean_std_file=args.mean_std_file, stride_ms=args.stride_ms, window_ms=args.window_ms, max_freq=args.max_freq,
+        sample_rate=args.sample_rate, specgram_type=args.specgram_type, use_dB_normalization=args.use_dB_normalization,
+        random_seed=args.random_seed)
 
+
+def get_model_params(args: argparse.Namespace) -> Dict[str, Any]:
+    return dict(
+        rnn_hidden_layers=args.rnn_hidden_layers, rnn_type=args.rnn_type, is_bidirectional=args.is_bidirectional,
+        rnn_hidden_size=args.rnn_hidden_size, fc_use_bias=args.fc_use_bias)
 
 
 if __name__ == '__main__':
@@ -46,22 +74,22 @@ if __name__ == '__main__':
     parser.add_argument("--rnn_type", type=str, default="gru", help="Type of RNN cell.")
     parser.add_argument("--fc_use_bias", type=bool, default=False, help="Whether use bias in the last fc layer.")
     parser.add_argument("--random_seed", type=int, default=0, help="The random seed to generate data.")
+    parser.add_argument("--epochs", type=int, default=100, help="The training epochs.")
     parser.add_argument("--batch_size", type=int, default=4, help="The batch size of data fed in.")
     parser.add_argument("--learning_rate", type=float, default=5e-4, help="The learning rate of network.")
-    args = parser.parse_args()
+    args = get_args(parser)
 
-    train_data = DataGenerator(
-        data_file=args.data_dir, data_type="train", batch_size=args.batch_size, vocab_file=args.vocab_file,
-        vocab_type=args.vocab_type, mean_std_file=args.mean_std_file, stride_ms=args.stride_ms,
-        window_ms=args.window_ms, max_freq=args.max_freq, sample_rate=args.sample_rate, specgram_type=args.specgram_type,
-        use_dB_normalization=args.use_dB_normalization, random_seed=args.random_seed, keep_transcription_text=False
-    )
+    print("********** The total config **********")
+    print(vars(args))
 
-    model_fn = Model(
-        num_classes=num_classes, rnn_hidden_layers=args.rnn_hidden_layers, rnn_type=args.rnn_type,
-        is_bidirectional=args.is_bidirectional, rnn_hidden_size=args.rnn_hidden_size, fc_use_bias=args.fc_use_bias)
+    input_params = get_data_params(args)
+    model_params = get_model_params(args)
+
+    train_data = DataGenerator(data_type="train", keep_transcription_text=False, **input_params)
+    eval_data = DataGenerator(data_type="eval", keep_transcription_text=False, **input_params)
+    model_fn = Model(num_classes=train_data.num_classes, **model_params)
 
     estimator = tf.estimator.Estimator(
         model_fn=model_fn,
         model_dir=args.model_dir)
-    estimator.train(input_fn=)
+    estimator.train(input_fn=train_data.input_fn)
