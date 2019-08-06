@@ -1,100 +1,69 @@
 """Contains DeepSpeech2 model."""
 
-import sys
-import os
-import logging
-import argparse
 import tensorflow as tf
 from deep_speech2.model_utils.network import DeepSpeech2
-from deep_speech2.decoders.decoders_deprecated import ctc_greedy_decoder
 from deep_speech2.model_utils.metrics import word_error, char_error
 from typing import Union, Optional, Callable, List, Dict
 
 
-def evaluate_model(estimator: tf.estimator.Estimator, blank_index: int,
-                   transcripts: List[List[int]], input_fn_eval: Callable):
-    """
-    Evaluate the model performance using WER anc CER as metrics.
-
-    WER: Word Error Rate
-    CER: Character Error Rate
-
-    :param estimator: estimator to evaluate.
-    :param blank_index: The index indicating the blank.
-    :param transcripts: a list of true labels tokenized.
-    :param input_fn_eval: data input function for evaluation.
-    :return: Evaluation result containing 'wer' and 'cer' as two metrics.
-    """
-    # Get predictions
-    predictions = estimator.predict(input_fn=input_fn_eval)
-
-    # Get probabilities of each pred
-    probs = [pred["probabilities"] for pred in predictions]
-
-    n = len(probs)
-
-    total_wer, total_cer = 0., 0.
-    for i in range(n):
-        decode = ctc_greedy_decoder(probs_seq=probs[i], blank_index=blank_index, vocabulary=None)
-        target = transcripts[i]
-        decode = "".join([chr(x) for x in decode])
-        total_wer += word_error(decode, target)
-
-
 class Model(object):
-    """
-    A model wrapper for tf.estimator.Estimator
-    """
-    def __init__(self, num_classes: int, rnn_hidden_layers: int, rnn_type: str,
-                 is_bidirectional: bool, rnn_hidden_size: int, fc_use_bias: bool,
-                 learning_rate: float):
-        self.model = DeepSpeech2(
+
+    def __init__(self, num_classes: int, n_features: int, rnn_hidden_layers: int, rnn_type: str,
+                 is_bidirectional: bool, rnn_hidden_size: int, fc_use_bias: bool, learning_rate: float):
+
+        self.acoustic_model = DeepSpeech2(
             num_rnn_layers=rnn_hidden_layers, rnn_type=rnn_type, is_bidirectional=is_bidirectional,
             rnn_hidden_size=rnn_hidden_size, num_classes=num_classes, fc_use_bias=fc_use_bias)
-        self.lr = learning_rate
 
-    def __call__(self, features: Dict, labels: List, mode: str) -> tf.estimator.EstimatorSpec:
-        """
-        Define model function for deep speech model.
-        Note: This is a `model_fn` implementation. Its parameters set should not be changed.
+        tf.reset_default_graph()
+        self.graph = tf.Graph()
+        with self.graph.as_default():
+            with tf.name_scope("Input"):
+                self.features = tf.placeholder(dtype=tf.float32, shape=[None, None, n_features, 1], name="features")
+                self.input_length = tf.placeholder(dtype=tf.int32, shape=[None, 1], name="input_length")
+                self.label_length = tf.placeholder(dtype=tf.int32, shape=[None, 1], name="label_length")
+                self.labels = tf.placeholder(dtype=tf.int32, shape=[None, None], name="labels")
+                self.is_train = tf.placeholder(dtype=tf.bool, shape=[1], name="train_phase")
 
-        :param features: a dictionary of input_data features.
-                         It includes the data `input_length`, `label_length` and the spectrogram `features`.
-        :param labels: a list of labels for the input data.
-        :param mode: current estimator mode; should be one of `tf.estimator.ModeKeys.TRAIN`, `EVALUATE`, `PREDICT`.
-                     which is 'train', 'eval', 'infer' respectively.
-        :return: EstimatorSpec.
-        """
-        input_length = features["input_length"]
-        label_length = features["label_length"]
-        features = features["features"]
-        if mode == tf.estimator.ModeKeys.PREDICT:
-            logits = self.model(features, training=False)
-            predictions = {
-                "classes": tf.argmax(logits, axis=2),
-                "probabilities": tf.nn.softmax(logits),
-                "logits": logits
-            }
-            return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+            with tf.name_scope("DeepSpeech2"):
+                logits = self.acoustic_model(self.features, self.is_train)  # shape: [batch_size, max_time, num_classes]
 
-        # mode = `train` or `eval`
-        # compute ctc loss
-        logits = self.model(features, training=True)
-        probs = tf.nn.softmax(logits)
-        ctc_input_length = self.compute_length_after_conv(
-            max_time_steps=tf.shape(features)[1], ctc_time_steps=tf.shape(probs)[1], input_length=input_length)
+            with tf.name_scope("Loss"):
+                ctc_input_length = self.compute_length_after_conv(
+                    max_time_steps=tf.shape(self.features)[1],
+                    ctc_time_steps=tf.shape(logits)[1],
+                    input_length=self.input_length)
 
-        loss = tf.reduce_mean(
-            self.ctc_loss(label_length=label_length, ctc_input_length=ctc_input_length, labels=labels, logits=logits))
+                ctc_input_length = tf.squeeze(ctc_input_length)
+                sparse_labels = tf.to_int32(tf.keras.backend.ctc_label_dense_to_sparse(self.labels, self.label_length))
+                pred = tf.log(logits + tf.keras.backend.epsilon())
 
-        # train_op for `train` mode.
-        # train_op won't be used under 'eval' mode
-        global_step = tf.train.get_or_create_global_step()
-        minimize_op = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(loss, global_step=global_step)
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        train_op = tf.group(minimize_op, update_ops)
+                batch_ctc_loss = tf.nn.ctc_loss(
+                    labels=sparse_labels, inputs=pred, sequence_length=ctc_input_length, time_major=False)
+                self.loss = tf.reduce_mean(batch_ctc_loss)
 
-        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+            tf.summary.scalar(name="ctc_loss", tensor=self.loss)
+
+            # todo: Use external decode instead.
+            with tf.name_scope("decode"):
+                # decode: single element list    decode[0]: sparse tensor
+                decode, _ = tf.nn.ctc_greedy_decoder(
+                    inputs=tf.transpose(logits, perm=[1, 0, 2]), sequence_length=ctc_input_length, merge_repeated=True)
+                self.decoded = tf.sparse_tensor_to_dense(decode[0])
+                # self.ler = tf.reduce_mean(tf.edit_distance(self.result, self.labels))
+                # tf.summary.scalar(name="ler", tensor=self.ler)
+
+            self.classes = tf.argmax(logits, axis=2)
+            self.probs = tf.nn.softmax(logits)
+            global_step = tf.train.get_or_create_global_step()
+            minimize_op = tf.train.AdamOptimizer(learning_rate=learning_rate)\
+                .minimize(self.loss, global_step=global_step)
+            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+            self.train_op = tf.group(minimize_op, update_ops)
+
+            self.init = tf.global_variables_initializer()
+            self.saver = tf.train.Saver(max_to_keep=5)
+            self.merge_summary = tf.summary.merge(tf.get_collection(tf.GraphKeys.SUMMARIES))
 
     @staticmethod
     def compute_length_after_conv(max_time_steps, ctc_time_steps, input_length) -> tf.Tensor:
@@ -118,16 +87,3 @@ class Model(object):
         """
         return tf.to_int32(tf.floordiv(
             tf.to_float(tf.multiply(input_length, ctc_time_steps)), tf.to_float(max_time_steps)))
-
-    @staticmethod
-    def ctc_loss(label_length: tf.Tensor, ctc_input_length: tf.Tensor, labels, logits: tf.Tensor):
-        """Computes the ctc loss for the current batch of predictions."""
-        label_length = tf.to_int32(tf.squeeze(label_length))
-        ctc_input_length = tf.to_int32(tf.squeeze(ctc_input_length))
-        sparse_labels = tf.to_int32(tf.keras.backend.ctc_label_dense_to_sparse(labels, label_length))
-        y_pred = tf.log(tf.transpose(logits, perm=[1, 0, 2]) + tf.keras.backend.epsilon())
-
-        return tf.expand_dims(
-            tf.nn.ctc_loss(labels=sparse_labels, inputs=y_pred, sequence_length=ctc_input_length),
-            axis=1)
-

@@ -12,7 +12,10 @@ from deep_speech2.data_utils.augmentor import AugmentationPipeline
 from deep_speech2.data_utils.featurizer.speech_featurizer import SpeechFeaturizer
 from deep_speech2.data_utils.segments import SpeechSegment
 from deep_speech2.data_utils.normalizer import FeatureNormalizer
+from collections import namedtuple
 from typing import Optional, List
+
+BatchData = namedtuple("BatchData", ["features", "labels", "input_length", "label_length"])
 
 
 class DataGenerator(object):
@@ -73,6 +76,20 @@ class DataGenerator(object):
         """Indicates the total classes."""
         return self._speech_featurizer.vocab_size
 
+    @property
+    def n_batches(self):
+        return len(self._data) // self._batch_size
+
+    @property
+    def n_features(self):
+        return self._speech_featurizer.n_features
+
+    def __getitem__(self, index) -> BatchData:
+        batch_data = self._data[index * self._batch_size: (index + 1) * self._batch_size]
+        batch_data = self._padding_batch(batch_data)
+        features, labels, input_length, label_length = zip(*batch_data)
+        return BatchData(features=features, labels=labels, input_length=input_length, label_length=label_length)
+
     def process_utterance(self, audio_file: str, transcript: str) -> (np.ndarray, List):
         """
         Load, augment, featurize and normalize for speech data.
@@ -126,12 +143,12 @@ class DataGenerator(object):
                 raise ValueError("If `padding_to` != -1, it should be larger than any instance's n_frames in the batch.")
             max_length = padding_to
 
-        for audio, text in batch_data:
+        for audio, tokens in batch_data:
             true_length = len(audio)  # the original length
             padded_audio = np.pad(audio, pad_width=[(0, max_length - true_length), (0, 0)], mode="constant")
             if flatten:
                 padded_audio = padded_audio.flatten()
-            padded_instance = [padded_audio, text, true_length]  # add `true length` information.
+            padded_instance = [padded_audio, tokens, true_length, len(tokens)]
             new_batch.append(padded_instance)
         return new_batch
 
@@ -139,7 +156,7 @@ class DataGenerator(object):
         self._rng.shuffle(self._data)
 
     def input_fn(self):
-        n_features = self._speech_featurizer.n_features
+        """A constructor for `Input_fn`"""
 
         def _gen_data():
             for specgram, tokens in self._data:
@@ -166,7 +183,7 @@ class DataGenerator(object):
                 tf.int32),
             output_shapes=(
                 {
-                    "features": tf.TensorShape([None, n_features, 1]),
+                    "features": tf.TensorShape([None, self.n_features, 1]),
                     "input_length": tf.TensorShape([1]),
                     "label_length": tf.TensorShape([1])
                 },
@@ -178,7 +195,7 @@ class DataGenerator(object):
             batch_size=self._batch_size,
             padded_shapes=(
                 {
-                    "features": tf.TensorShape([None, n_features, 1]),
+                    "features": tf.TensorShape([None, self.n_features, 1]),
                     "input_length": tf.TensorShape([1]),
                     "label_length": tf.TensorShape([1])
                 },

@@ -27,9 +27,9 @@ def ctc_greedy_decoder(probs_seq, blank_index: int, vocabulary=None) -> Union[st
     except Exception as e:
         raise ValueError("probs_seq is invalid, expected 2d array-like list.")
 
-    total_len = probs_seq.shape[1]
-    if total_len != len(vocabulary) + 1:
-        raise ValueError("probs_seq dimension mismatched with vocabulary")
+    # total_len = probs_seq.shape[1]
+    # if total_len != len(vocabulary) + 1:
+    #     raise ValueError("probs_seq dimension mismatched with vocabulary")
 
     # argmax to get the best index for each time step
     max_index_list = list(np.array(probs_seq).argmax(axis=1))

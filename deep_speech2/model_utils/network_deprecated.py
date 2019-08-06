@@ -21,7 +21,7 @@ _BATCH_NORM_DECAY = 0.997
 _CONV_FILTERS = 32
 
 
-def batch_norm(inputs: tf.Tensor, training: Union[bool, tf.Tensor]) -> tf.Tensor:
+def batch_norm(inputs: tf.Tensor, training: bool) -> tf.Tensor:
     """
     Batch normalization layer.
     Note that the momentum to use will affect validation accuracy over time.
@@ -33,7 +33,7 @@ def batch_norm(inputs: tf.Tensor, training: Union[bool, tf.Tensor]) -> tf.Tensor
     (such as 0.1) to get good evaluation result sooner.
 
     :param inputs: input data for batch norm layer.
-    :param training: a boolean or tensor to indicate if it is in training stage.
+    :param training: a boolean to indicate if it is in training stage.
     :return: tensor output from batch norm layer.
     """
     return tf.layers.batch_normalization(
@@ -42,7 +42,7 @@ def batch_norm(inputs: tf.Tensor, training: Union[bool, tf.Tensor]) -> tf.Tensor
 
 
 def _conv_bn_layer(inputs: tf.Tensor, padding: Union[Tuple, List], filters: int,
-                   kernel_size: Tuple, strides: Tuple, layer_id: int, training: Union[bool, tf.Tensor]) -> tf.Tensor:
+                   kernel_size: Tuple, strides: Tuple, layer_id: int, training: bool) -> tf.Tensor:
     """
     Defines 2D convolutional + batch normalization layer.
 
@@ -52,7 +52,7 @@ def _conv_bn_layer(inputs: tf.Tensor, padding: Union[Tuple, List], filters: int,
     :param kernel_size: a tuple specifying the height and width of the 2D convolution window.
     :param strides: a tuple specifying the stride length of the convolution.
     :param layer_id: an integer specifying the layer index.
-    :param training: a boolean or tensor to indicate which stage we are in (training/eval).
+    :param training: a boolean to indicate which stage we are in (training/eval).
     :return: tensor output from the current layer.
     """
     inputs = tf.pad(inputs, [[0, 0], [padding[0], padding[0]], [padding[1], padding[1]], [0, 0]])
@@ -63,7 +63,7 @@ def _conv_bn_layer(inputs: tf.Tensor, padding: Union[Tuple, List], filters: int,
 
 
 def _rnn_layer(inputs: tf.Tensor, rnn_cell: tf.nn.rnn_cell.RNNCell, rnn_hidden_size: int, layer_id: int,
-               is_batch_norm: bool, is_bidirectional: bool, training: Union[bool, tf.Tensor]) -> tf.Tensor:
+               is_batch_norm: bool, is_bidirectional: bool, training: bool) -> tf.Tensor:
     """
     Defines a batch normalization + rnn layer.
 
@@ -74,7 +74,7 @@ def _rnn_layer(inputs: tf.Tensor, rnn_cell: tf.nn.rnn_cell.RNNCell, rnn_hidden_s
     :param is_batch_norm: a boolean specifying whether to perform batch normalization on input states.
     :param is_bidirectional: a boolean specifying whether the rnn layer is bi-directional.
     :param training: a boolean to indicate which stage we are in (training/eval).
-    :return: tensor output for the current layer.  `[batch_size, max_time, cell.output_size]`
+    :return: tensor output for the current layer.
     """
     if is_batch_norm:
         inputs = batch_norm(inputs, training)
@@ -113,37 +113,31 @@ class DeepSpeech2(object):
         self.num_classes = num_classes
         self.fc_use_bias = fc_use_bias
 
-    def __call__(self, inputs: tf.Tensor, training: Union[bool, tf.Tensor]):
+    def __call__(self, inputs: tf.Tensor, training: bool):
         # 1. Two CNN layers
-        with tf.name_scope("cnn"):
-            inputs = _conv_bn_layer(
-                inputs, padding=(20, 5), filters=_CONV_FILTERS, kernel_size=(41, 11),
-                strides=(2, 2), layer_id=1, training=training)
+        inputs = _conv_bn_layer(
+            inputs, padding=(20, 5), filters=_CONV_FILTERS, kernel_size=(41, 11),
+            strides=(2, 2), layer_id=1, training=training)
 
-            inputs = _conv_bn_layer(
-                inputs, padding=(10, 5), filters=_CONV_FILTERS, kernel_size=(21, 11),
-                strides=(2, 1), layer_id=2, training=training)
+        inputs = _conv_bn_layer(
+            inputs, padding=(10, 5), filters=_CONV_FILTERS, kernel_size=(21, 11),
+            strides=(2, 1), layer_id=2, training=training)
 
-        with tf.name_scope("reshape"):
-            # output of conv_layer2 is of the shape [batch_size (N), times (T), features (F), channels (C)].
-            batch_size = tf.shape(inputs)[0]
-            feat_size = inputs.get_shape().as_list()[2]
-            inputs = tf.reshape(inputs, shape=[batch_size, -1, feat_size * _CONV_FILTERS])
+        # output of conv_layer2 is of the shape [batch_size (N), times (T), features (F), channels (C)].
+        batch_size = tf.shape(inputs)[0]
+        feat_size = inputs.get_shape().as_list()[2]
+        inputs = tf.reshape(inputs, shape=[batch_size, -1, feat_size * _CONV_FILTERS])
 
-        with tf.name_scope("rnn"):
-            # 2. RNN layers:
-            for layer_counter in range(self.num_rnn_layers):
-                is_batch_norm = (layer_counter != 0)  # No batch normalization on the first layer.
-                layer_id = layer_counter + 1
-                inputs = _rnn_layer(
-                    inputs=inputs, rnn_cell=self.rnn_cell, rnn_hidden_size=self.rnn_hidden_size, layer_id=layer_id,
-                    is_batch_norm=is_batch_norm, is_bidirectional=self.is_bidirectional, training=training)
+        # 2. RNN layers:
+        for layer_counter in range(self.num_rnn_layers):
+            is_batch_norm = (layer_counter != 0)  # No batch normalization on the first layer.
+            layer_id = layer_counter + 1
+            inputs = _rnn_layer(
+                inputs=inputs, rnn_cell=self.rnn_cell, rnn_hidden_size=self.rnn_hidden_size, layer_id=layer_id,
+                is_batch_norm=is_batch_norm, is_bidirectional=self.is_bidirectional, training=training)
 
-        with tf.name_scope("fc"):
-            # 3. FC Layer with batch norm
-            inputs = batch_norm(inputs, training)
-
-            # shape: [batch_size, max_time, num_classes]
-            logits = tf.layers.dense(inputs, units=self.num_classes, use_bias=self.fc_use_bias)
+        # 3. FC Layer with batch norm
+        inputs = batch_norm(inputs, training)
+        logits = tf.layers.dense(inputs, units=self.num_classes, use_bias=self.fc_use_bias)
 
         return logits
