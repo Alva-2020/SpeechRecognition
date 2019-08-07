@@ -108,7 +108,8 @@ if __name__ == '__main__':
 
     if os.path.exists(eval_data_path):
         print("Loading Dev data from files %s..." % eval_data_path)
-        eval_data = pickle.load(eval_data_path)
+        with open(eval_data_path, "rb") as f:
+            eval_data = pickle.load(f)
         print("Loading Dev data successfully.")
     else:
         eval_data = DataGenerator(data_type="dev", keep_transcription_text=False, **input_params)
@@ -119,6 +120,7 @@ if __name__ == '__main__':
 
     if os.path.exists(train_data_path):
         print("Loading Train data from files %s..." % train_data_path)
+        with open(eval_data_path)
         train_data = pickle.load(train_data_path)
         print("Loading Train data successfully.")
     else:
