@@ -51,7 +51,9 @@ class SpeechFeaturizer(object):
     def n_features(self):
         return self._audio_featurizer.n_features
 
-    def featurize(self, speech_segment: SpeechSegment, keep_transcription_text: bool) -> (np.ndarray, List):
+    def featurize(self, speech_segment: SpeechSegment,
+                  keep_transcription_text: bool,
+                  text_sep: Optional[str]=None) -> (np.ndarray, List):
         """
         Extract features for speech segment.
 
@@ -60,6 +62,7 @@ class SpeechFeaturizer(object):
 
         :param speech_segment: Speech segment to extract features from.
         :param keep_transcription_text: whether to return original text or token indices.
+        :param text_sep: The sep string of text. if `None`, use `list` to convert text to list.
         :return: A tuple 1) spectrogram audio feature in 2d array.
                          2) If `keep_transcription_text = False`: list of token indices.
                             If `keep_transcription_text = True`
@@ -67,7 +70,7 @@ class SpeechFeaturizer(object):
         audio_feature = self._audio_featurizer.featurize(speech_segment)
         if keep_transcription_text:
             return audio_feature, speech_segment.transcript
-        text_ids = self._text_featurizer.featurize(speech_segment.transcript)
+        text_ids = self._text_featurizer.featurize(speech_segment.transcript, text_sep)
         return audio_feature, text_ids
 
     @property

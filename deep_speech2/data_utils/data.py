@@ -90,12 +90,13 @@ class DataGenerator(object):
         features, labels, input_length, label_length = zip(*batch_data)
         return BatchData(features=features, labels=labels, input_length=input_length, label_length=label_length)
 
-    def process_utterance(self, audio_file: str, transcript: str) -> (np.ndarray, List):
+    def process_utterance(self, audio_file: str, transcript: str, text_sep: Optional[str]=None) -> (np.ndarray, List):
         """
         Load, augment, featurize and normalize for speech data.
 
         :param audio_file: File path of audio file.
         :param transcript: Transcription text.
+        :param text_sep: The sep string of text. if `None`, use `list` to convert text to list.
         :return: Tuple of audio feature tensor and data of transcription part,
                  where transcription part could be token ids or text.
                  If `keep_transcription_text` is True: the transcription part is text
@@ -103,7 +104,8 @@ class DataGenerator(object):
         """
         speech_segment = SpeechSegment.from_file(audio_file, transcript)
         self._augmentation_pipeline.transform_audio(speech_segment)
-        specgram, transcript_part = self._speech_featurizer.featurize(speech_segment, self._keep_transcription_text)
+        specgram, transcript_part =\
+            self._speech_featurizer.featurize(speech_segment, self._keep_transcription_text, text_sep)
         specgram = self._normalizer.apply(specgram)
         return specgram, transcript_part
 
@@ -115,6 +117,7 @@ class DataGenerator(object):
             raise ValueError("The max duration should be no smaller than min duration.")
         data = read_data(data_file=data_file, data_tag=data_tag, to_dict=False)
         vocab_column = get_vocab_column(vocab_type)
+        sep = "-" if vocab_type == "pny" else None
 
         # use query with @ external parameter
         data = data.query("(@min_duration <= duration <= @max_duration) and (data_type == '@data_type')")
@@ -123,7 +126,7 @@ class DataGenerator(object):
 
         res = []
         for src, transcript in data[["src", vocab_column]].values:
-            specgram, tokens = self.process_utterance(src, transcript)
+            specgram, tokens = self.process_utterance(src, transcript, sep)
             res.append((specgram, tokens))
         return res
 

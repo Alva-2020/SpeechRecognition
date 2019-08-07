@@ -1,8 +1,6 @@
 """Contains the text featurizer class."""
 
-from typing import Union, List, Dict
-
-_BLANK_INDEX = 0
+from typing import Union, List, Dict, Optional
 
 
 class TextFeaturizer(object):
@@ -17,10 +15,17 @@ class TextFeaturizer(object):
     def __init__(self, vocab_filepath: str):
         self._vocab_dict, self._vocab_list = self._load_vocabulary_from_file(vocab_filepath)
 
-    def featurize(self, text: Union[str, List]) -> List[int]:
-        """Convert the text to token indices"""
+    def featurize(self, text: Union[str, List], text_sep: Optional[str]=None) -> List[int]:
+        """Convert the text to token indices
+        :param text: The target text to be featurized.
+        :param text_sep: The sep string of text. if `None`, use `list` to convert text to list.
+        :return: The tokenize ids of text.
+        """
         if isinstance(text, str):
-            text = list(text.strip())
+            if text_sep:
+                text = text.strip().split(text_sep)
+            else:
+                text = list(text.strip())
         return [self._vocab_dict[token] for token in text]
 
     @property
