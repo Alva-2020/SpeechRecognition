@@ -14,7 +14,7 @@ python deep_speech2/main.py \
 --specgram_type='linear' \
 --use_dB_normalization=True \
 --rnn_hidden_size=800 \
---rnn_hideen_layers=5 \
+--rnn_hidden_layers=5 \
 --rnn_type='gru' \
 --fc_use_bias=False \
 --model_dir='/data/zhaochengming/projects/SpeechRecognition/deep_speech2/AM_Model_LOG' \
