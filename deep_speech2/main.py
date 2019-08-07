@@ -8,9 +8,10 @@ import time
 import tensorflow as tf
 from deep_speech2.model_utils.model import Model
 from deep_speech2.data_utils.data import DataGenerator
+from deep_speech2.tools.metrics import EditDistance
 from _utils.confighandler import ConfigHandler
-from _utils.tf.util import get_ckpt_global_step
-from typing import Optional, List, Dict, Any, Union
+from _utils.tensorflow import get_ckpt_global_step
+from typing import List, Dict, Any
 from tqdm import tqdm
 
 
@@ -109,13 +110,12 @@ if __name__ == '__main__':
     ckpt_state = tf.train.get_checkpoint_state(model_dir)
 
     if ckpt_state:
-        model.saver.restore(sess, ckpt_state.model_checkpoint_path)
+        model.restore(sess, ckpt_state.model_checkpoint_path)
         old_epoch = get_ckpt_global_step(ckpt_state)
     else:
-        sess.run(model.init)
+        model.init(sess)
         old_epoch = 0
 
-    log = "{} stage cost: {:.4f}, time using: {:.2f}"
     epochs = args["epochs"]
     old_eval_loss = float("inf")
     train_step = 0
@@ -126,14 +126,11 @@ if __name__ == '__main__':
         train_loss = 0.
         tic = time.time()
         for i in tqdm(range(train_data.n_batches), desc="Epoch {}/{} Train Stage".format(epoch + 1, epochs)):
-            feed_dict = {
-                model.features: train_data[i].features,
-                model.labels: train_data[i].labels,
-                model.input_length: train_data[i].input_length,
-                model.label_length: train_data[i].label_length,
-                model.is_train: True
-            }
-            loss, _, train_summary = sess.run([model.loss, model.train_op, model.merge_summary], feed_dict=feed_dict)
+
+            loss, train_summary = model.train(
+                sess, features=train_data[i].features, labels=train_data[i].labels,
+                input_length=train_data[i].input_length, label_length=train_data[i].label_length)
+
             train_loss += loss
             train_step += 1
             train_writer.add_summary(train_summary, train_step)
@@ -141,24 +138,20 @@ if __name__ == '__main__':
         # 1.2 print train log
         toc = time.time()
         train_loss /= train_data.n_batches
-        print(log.format("Train", train_loss, toc - tic))
+        print("{} stage cost: {:.4f}, time using: {:.2f}".format("Train", train_loss, toc - tic))
 
         # 2. Eval Stage
         # 2.1. int
-        eval_loss = 0.
+        eval_loss, cer = 0., 0.
         tic = time.time()
         eval_step = train_step
         for i in tqdm(range(eval_data.n_batches), desc="Epoch {}/{} Eval Stage".format(epoch + 1, epochs)):
-            feed_dict = {
-                model.features: eval_data[i].features,
-                model.labels: eval_data[i].labels,
-                model.input_length: eval_data[i].input_length,
-                model.label_length: eval_data[i].label_length,
-                model.is_train: False
-            }
-            loss, eval_summary, test_results = sess.run([model.loss, model.merge_summary, model.decoded],
-                                                        feed_dict=feed_dict)
-            cer =
+
+            loss, eval_summary, eval_results = model.eval(
+                sess, features=eval_data[i].features, labels=eval_data[i].labels,
+                input_length=eval_data[i].input_length, label_length=eval_data[i].label_length)
+
+            cer += EditDistance.char_error_rate(eval_results, eval_data[i].labels)
             eval_loss += loss
             eval_step += 1
             eval_writer.add_summary(eval_summary, eval_step)
@@ -166,7 +159,8 @@ if __name__ == '__main__':
         # 2.2. print eval log
         toc = time.time()
         eval_loss /= eval_data.n_batches
-        print(log.format("Eval", eval_loss, toc - tic))
+        cer /= eval_data.n_batches
+        print("{} stage cost: {:.4f}, cer: {:.2f}, time using: {:.2f}".format("Eval", eval_loss, cer, toc - tic))
         if eval_loss < old_eval_loss:
             model.saver.save(
                 sess, save_path=os.path.join(model_dir, "model_{:4f}.ckpt".format(eval_loss)), global_step=train_step)
@@ -174,10 +168,8 @@ if __name__ == '__main__':
         else:
             print("Eval loss not improved, before {:4f}, current {:4f}".format(old_eval_loss, eval_loss))
 
+        train_data.shuffle()
+
     train_writer.close()
     eval_writer.close()
-
-
-
-
 
