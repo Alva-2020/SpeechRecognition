@@ -48,6 +48,10 @@ class DataGenerator(object):
                  min_duration: float=0., stride_ms: float=10., window_ms: float=20., max_freq: Optional[float]=None,
                  sample_rate: int=16000, specgram_type: str="linear", use_dB_normalization: bool=True, random_seed: int=0,
                  keep_transcription_text: bool=False):
+
+        self._augmentation_pipeline = \
+            AugmentationPipeline(augmentation_config=augmentation_config, random_seed=random_seed)
+
         self._data = self._process_data(data_file=data_file, data_tag="labeled_data", data_type=data_type,
                                         vocab_type=vocab_type, max_duration=max_duration, min_duration=min_duration)
 
@@ -56,8 +60,7 @@ class DataGenerator(object):
         self._max_duration = max_duration
         self._min_duration = min_duration
         self._normalizer = FeatureNormalizer(mean_std_file)
-        self._augmentation_pipeline = AugmentationPipeline(
-            augmentation_config=augmentation_config, random_seed=random_seed)
+
         self._speech_featurizer = SpeechFeaturizer(
             vocab_filepath=vocab_file,
             specgram_type=specgram_type,
