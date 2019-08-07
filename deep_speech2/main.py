@@ -106,19 +106,19 @@ if __name__ == '__main__':
     train_data_path = os.path.join(model_dir, "train_data.pickle")
     eval_data_path = os.path.join(model_dir, "eval_data.pickle")
 
-    if os.path.exists(train_data_path):
-        train_data = pickle.load(train_data_path)
-    else:
-        train_data = DataGenerator(data_type="train", keep_transcription_text=False, **input_params)
-        with open(train_data_path, "wb") as f:
-            pickle.dump(train_data, f, pickle.HIGHEST_PROTOCOL)
-
     if os.path.exists(eval_data_path):
         eval_data = pickle.load(eval_data_path)
     else:
         eval_data = DataGenerator(data_type="dev", keep_transcription_text=False, **input_params)
         with open(eval_data_path, "wb") as f:
             pickle.dump(eval_data, f, pickle.HIGHEST_PROTOCOL)
+
+    if os.path.exists(train_data_path):
+        train_data = pickle.load(train_data_path)
+    else:
+        train_data = DataGenerator(data_type="train", keep_transcription_text=False, **input_params)
+        with open(train_data_path, "wb") as f:
+            pickle.dump(train_data, f, pickle.HIGHEST_PROTOCOL)
 
     model = Model(num_classes=train_data.num_classes, n_features=train_data.n_features, **model_params)
     sess = build_session(model.graph)
