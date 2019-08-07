@@ -107,18 +107,26 @@ if __name__ == '__main__':
     eval_data_path = os.path.join(model_dir, "eval_data.pickle")
 
     if os.path.exists(eval_data_path):
+        print("Loading Dev data from files %s..." % eval_data_path)
         eval_data = pickle.load(eval_data_path)
+        print("Loading Dev data successfully.")
     else:
         eval_data = DataGenerator(data_type="dev", keep_transcription_text=False, **input_params)
+        print("Saving Dev data into files %s..." % eval_data_path)
         with open(eval_data_path, "wb") as f:
             pickle.dump(eval_data, f, pickle.HIGHEST_PROTOCOL)
+        print("Saving Dev data successfully.")
 
     if os.path.exists(train_data_path):
+        print("Loading Train data from files %s..." % train_data_path)
         train_data = pickle.load(train_data_path)
+        print("Loading Train data successfully.")
     else:
         train_data = DataGenerator(data_type="train", keep_transcription_text=False, **input_params)
+        print("Saving Train data into files %s..." % train_data_path)
         with open(train_data_path, "wb") as f:
             pickle.dump(train_data, f, pickle.HIGHEST_PROTOCOL)
+        print("Saving Train data successfully.")
 
     model = Model(num_classes=train_data.num_classes, n_features=train_data.n_features, **model_params)
     sess = build_session(model.graph)
