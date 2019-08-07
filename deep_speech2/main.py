@@ -88,7 +88,7 @@ if __name__ == '__main__':
     parser.add_argument("--rnn_type", type=str, default="gru", help="Type of RNN cell.")
     parser.add_argument("--is_bidirectional", type=bool, default=True, help="If rnn unit is bidirectional")
     parser.add_argument("--fc_use_bias", type=bool, default=False, help="Whether use bias in the last fc layer.")
-    parser.add_argument("--model_dir", type=bool, help="Where to save the model checkpoints.")
+    parser.add_argument("--model_dir", type=str, help="Where to save the model checkpoints.")
     parser.add_argument("--random_seed", type=int, default=0, help="The random seed to generate data.")
     parser.add_argument("--epochs", type=int, default=100, help="The training epochs.")
     parser.add_argument("--batch_size", type=int, default=4, help="The batch size of data fed in.")
