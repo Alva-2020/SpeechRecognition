@@ -49,6 +49,8 @@ class DataGenerator(object):
                  min_duration: float=0., stride_ms: float=10., window_ms: float=20., max_freq: Optional[float]=None,
                  sample_rate: int=16000, specgram_type: str="linear", use_dB_normalization: bool=True, random_seed: int=0,
                  keep_transcription_text: bool=False):
+        if data_type not in {'train', 'dev', 'test'}:
+            raise ValueError("Invalid data_type %s, possible choices are ['train', 'dev', 'test'.]" % data_type)
 
         self._augmentation_pipeline = \
             AugmentationPipeline(augmentation_config=augmentation_config, random_seed=random_seed)

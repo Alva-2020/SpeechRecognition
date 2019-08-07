@@ -11,6 +11,7 @@ from deep_speech2.data_utils.data import DataGenerator
 from deep_speech2.tools.metrics import EditDistance
 from _utils.confighandler import ConfigHandler
 from _utils.tensorflow import get_ckpt_global_step
+from dill import dill as pickle
 from typing import List, Dict, Any
 from tqdm import tqdm
 
@@ -95,17 +96,33 @@ if __name__ == '__main__':
     args = get_args(parser)
 
     print("********** The total config **********")
-    print(vars(args))
+    for key, value in args.items():
+        print("{key}: {value}\n".format(key=key, value=value))
     print("\n\n")
 
     input_params = get_data_params(args)
     model_params = get_model_params(args)
+    model_dir = args["model_dir"]
+    train_data_path = os.path.join(model_dir, "train_data.pickle")
+    eval_data_path = os.path.join(model_dir, "eval_data.pickle")
 
-    train_data = DataGenerator(data_type="train", keep_transcription_text=False, **input_params)
-    eval_data = DataGenerator(data_type="eval", keep_transcription_text=False, **input_params)
+    if os.path.exists(train_data_path):
+        train_data = pickle.load(train_data_path)
+    else:
+        train_data = DataGenerator(data_type="train", keep_transcription_text=False, **input_params)
+        with open(train_data_path, "wb") as f:
+            pickle.dump(train_data, f, pickle.HIGHEST_PROTOCOL)
+
+    if os.path.exists(eval_data_path):
+        eval_data = pickle.load(eval_data_path)
+    else:
+        eval_data = DataGenerator(data_type="dev", keep_transcription_text=False, **input_params)
+        with open(eval_data_path, "wb") as f:
+            pickle.dump(eval_data, f, pickle.HIGHEST_PROTOCOL)
+
     model = Model(num_classes=train_data.num_classes, n_features=train_data.n_features, **model_params)
     sess = build_session(model.graph)
-    model_dir = args["model_dir"]
+
     train_writer = tf.summary.FileWriter(logdir=os.path.join(model_dir, "train"), graph=sess.graph)
     eval_writer = tf.summary.FileWriter(logdir=os.path.join(model_dir, "test"))
     ckpt_state = tf.train.get_checkpoint_state(model_dir)
