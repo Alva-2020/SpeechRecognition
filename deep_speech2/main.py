@@ -48,7 +48,7 @@ def get_args(arg_parser: argparse.ArgumentParser,
 
 def get_data_params(args: Dict[str, Any]) -> Dict[str, Any]:
     return dict(
-        data_file=args["data_dir"], batch_size=args["batch_size"], vocab_file=args["vocab_file"],
+        data_file=args["data_file"], batch_size=args["batch_size"], vocab_file=args["vocab_file"],
         vocab_type=args["vocab_type"], mean_std_file=args["mean_std_file"], stride_ms=args["stride_ms"],
         window_ms=args["window_ms"], max_freq=args["max_freq"], sample_rate=args["sample_rate"],
         specgram_type=args["specgram_type"], use_dB_normalization=args["use_dB_normalization"],
