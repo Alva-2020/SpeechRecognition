@@ -6,6 +6,7 @@ and offering data reader interface of tensorflow requirements.
 import random
 import numpy as np
 import tensorflow as tf
+from tqdm import tqdm
 from deep_speech2.tools.build_vocab import get_vocab_column
 from deep_speech2.data_utils.utility import read_data
 from deep_speech2.data_utils.augmentor import AugmentationPipeline
@@ -128,7 +129,7 @@ class DataGenerator(object):
             raise ValueError("The %s data for %s is empty!" % (data_tag, data_type))
 
         res = []
-        for src, transcript in data[["src", vocab_column]].values:
+        for src, transcript in tqdm(data[["src", vocab_column]].values, desc="Processing {} data".format(data_type)):
             specgram, tokens = self.process_utterance(src, transcript, sep)
             res.append((specgram, tokens))
         return res
