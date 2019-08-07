@@ -9,7 +9,7 @@ import argparse
 from scipy.io import wavfile
 from collections import namedtuple
 from pypinyin import slug, Style
-from _utils.nlp.u_nlp import DBC2SBC
+from _utils.nlp.tools import DBC2SBC
 from typing import Optional, Dict, Tuple
 from deep_speech2.constant import DATA_SOURCE_DIR
 
