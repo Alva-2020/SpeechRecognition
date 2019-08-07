@@ -132,10 +132,13 @@ def transform(args):
         correction_file = correction_file[0] if correction_file else None
         stream.append(_transform_aishell(source_dir, correction_file))
 
+    if os.path.exists(output_file):
+        os.remove(output_file)
+
     with open(output_file, "w", encoding="utf-8") as fw:
         for g in stream:
             for wav_file, duration, content, pinyin, partition, data_source in g:
-                fw.write("\t".join([wav_file, duration, content, pinyin, partition, data_source]) + "\n")
+                fw.write("\t".join([wav_file, str(duration), content, pinyin, partition, data_source]) + "\n")
 
 
 if __name__ == "__main__":
