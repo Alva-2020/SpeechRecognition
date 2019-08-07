@@ -52,9 +52,6 @@ class DataGenerator(object):
         self._augmentation_pipeline = \
             AugmentationPipeline(augmentation_config=augmentation_config, random_seed=random_seed)
 
-        self._data = self._process_data(data_file=data_file, data_tag="labeled_data", data_type=data_type,
-                                        vocab_type=vocab_type, max_duration=max_duration, min_duration=min_duration)
-
         self._indexes = np.arange(len(self._data))
         self._batch_size = batch_size
         self._max_duration = max_duration
@@ -73,6 +70,9 @@ class DataGenerator(object):
 
         self._rng = random.Random(random_seed)
         self._keep_transcription_text = keep_transcription_text
+
+        self._data = self._process_data(data_file=data_file, data_tag="labeled_data", data_type=data_type,
+                                        vocab_type=vocab_type, max_duration=max_duration, min_duration=min_duration)
 
     @property
     def num_classes(self):
