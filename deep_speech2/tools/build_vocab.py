@@ -4,7 +4,7 @@ from collections import Counter
 from pypinyin import Style
 from pypinyin.constants import PINYIN_DICT, PHRASES_DICT
 from pypinyin.core import to_fixed
-from _utils.nlp.u_nlp import common_words
+from _utils.nlp.tools import common_words
 from deep_speech2.data_utils.utility import read_data
 from typing import List, Optional
 
@@ -12,8 +12,7 @@ from typing import List, Optional
 _VOCAB_COLUMN_ALIAS = {
         "pny": "pinyin",
         "han": "content",
-        "eng": "content",
-}
+        "eng": "content", }
 
 _VOCAB_TYPES = list(_VOCAB_COLUMN_ALIAS.keys())
 
