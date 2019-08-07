@@ -43,7 +43,7 @@ class FeatureNormalizer(object):
 
     def _compute_mean_std(self, data_path: str, featurize_func: Callable, num_samples: int):
         """Compute mean and std from randomly sampled instances."""
-        data: List[Dict] = read_data(data_path, to_dict=True)
+        data: List[Dict] = read_data(data_path, data_tag="labeled_data", to_dict=True)
         sampled_data = self._rng.sample(data, num_samples)
         features = []
         for instance in sampled_data:
