@@ -16,6 +16,7 @@ python deep_speech2/main.py \
 --rnn_hidden_size=800 \
 --rnn_hidden_layers=5 \
 --rnn_type='gru' \
+--is_bidirectional=True \
 --fc_use_bias=False \
 --model_dir='/data/zhaochengming/projects/SpeechRecognition/deep_speech2/AM_Model_LOG' \
 --random_seed=0 \
