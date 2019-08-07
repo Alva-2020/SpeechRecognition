@@ -5,13 +5,13 @@ import os
 import sys
 import argparse
 import time
+import dill as pickle
 import tensorflow as tf
 from deep_speech2.model_utils.model import Model
 from deep_speech2.data_utils.data import DataGenerator
 from deep_speech2.tools.metrics import EditDistance
 from _utils.confighandler import ConfigHandler
 from _utils.tensorflow import get_ckpt_global_step
-from dill import dill as pickle
 from typing import List, Dict, Any
 from tqdm import tqdm
 
