@@ -120,7 +120,8 @@ class DataGenerator(object):
         sep = "-" if vocab_type == "pny" else None
 
         # use query with @ external parameter
-        data = data.query("(@min_duration <= duration <= @max_duration) and (data_type == '@data_type')")
+        # no need add '' for string variables.
+        data = data.query("(@min_duration <= duration <= @max_duration) and (data_type == @data_type)")
         if len(data) == 0:
             raise ValueError("The %s data for %s is empty!" % (data_tag, data_type))
 
