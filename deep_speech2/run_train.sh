@@ -2,7 +2,7 @@ cd /data/zhaochengming/projects/SpeechRecognition
 
 PYTHONPATH=.:$PYTHONPATH
 
-python main.py \
+python deep_speech2/main.py \
 --param_file='/data/zhaochengming/projects/SpeechRecognition/deep_speech2/settings.xml' \
 --data_file='/data/zhaochengming/data/data_source/Speech/labeled_data.txt' \
 --vocab_file='/data/zhaochengming/data/data_source/Speech/vocab.txt' \
