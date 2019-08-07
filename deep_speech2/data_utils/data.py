@@ -52,7 +52,6 @@ class DataGenerator(object):
         self._augmentation_pipeline = \
             AugmentationPipeline(augmentation_config=augmentation_config, random_seed=random_seed)
 
-        self._indexes = np.arange(len(self._data))
         self._batch_size = batch_size
         self._max_duration = max_duration
         self._min_duration = min_duration
