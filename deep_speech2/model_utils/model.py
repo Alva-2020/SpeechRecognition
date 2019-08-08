@@ -1,14 +1,18 @@
-"""Contains DeepSpeech2 model."""
 
-import numpy as np
+
+"""
+Contains DeepSpeech2 model.
+Based on model without placeholders which are replaced by `dataset` api
+"""
+
 import tensorflow as tf
 import _utils.numpy as unp
-from _utils.tensorflow import StaticModel
+import _utils.tensorflow as utf
 from deep_speech2.model_utils.network import DeepSpeech2
 from typing import Union, List
 
 
-class Model(StaticModel):
+class Model(object):
 
     def __init__(self, num_classes: int, n_features: int, rnn_hidden_layers: int, rnn_type: str,
                  is_bidirectional: bool, rnn_hidden_size: int, fc_use_bias: bool, learning_rate: float):
@@ -16,7 +20,6 @@ class Model(StaticModel):
         self.acoustic_model = DeepSpeech2(
             num_rnn_layers=rnn_hidden_layers, rnn_type=rnn_type, is_bidirectional=is_bidirectional,
             rnn_hidden_size=rnn_hidden_size, num_classes=num_classes, fc_use_bias=fc_use_bias)
-
         self.n_features = n_features
         self.lr = learning_rate
         self._graph = self._build_graph()
@@ -33,26 +36,54 @@ class Model(StaticModel):
     def saver(self):
         return self._saver
 
+    def init(self, sess: tf.Session):
+        sess.run(self.graph_init)
+
+    def restore(self, sess: tf.Session, ckpt_path: str):
+        print("Loading model checkpoints from {}  ...".format(ckpt_path))
+        self.saver.restore(sess, ckpt_path)
+        print("Loading model successfully!")
+
+    def _parse_record(self):
+        pass
+
+    @staticmethod
+    def _build_data(input_files: tf.Tensor, batch_size: tf.Tensor) -> tf.data.Iterator:
+        dataset = tf.data.TFRecordDataset(filenames=input_files)
+        dataset = dataset.map(...)
+        dataset = dataset.shuffle(buffer_size=10000)
+        dataset = dataset.batch(batch_size)
+        iterator = dataset.make_initializable_iterator()
+        return iterator
+
     def _build_graph(self):
-        tf.reset_default_graph()
         graph = tf.Graph()
-        with graph.as_default():
+        tf.reset_default_graph()
+        with self._graph.as_default():
             with tf.name_scope("Input"):
-                self.features = tf.placeholder(dtype=tf.float32, shape=[None, None, self.n_features, 1], name="features")
-                self.input_length = tf.placeholder(dtype=tf.int32, shape=[None, 1], name="input_length")
-                self.label_length = tf.placeholder(dtype=tf.int32, shape=[None, 1], name="label_length")
-                self.labels = tf.placeholder(dtype=tf.int32, shape=[None, None], name="labels")
+                self.input_files = tf.placeholder(dtype=tf.string, shape=[None], name="files_path")
+                self.batch_size = tf.placeholder(dtype=tf.int64, shape=[1], name="batch_size")  # must be int64
                 self.is_train = tf.placeholder(dtype=tf.bool, shape=[1], name="train_phase")
 
+            with tf.name_scope("Read"):
+                self.data_iterator = self._build_data(self.input_files, self.batch_size)
+                self.data_init = self.data_iterator.initializer
+                features, input_length, label_length, labels = self.data_iterator.get_next()
+
+                # check input data tensor's attribute
+                utf.validate_tensor(features, dtype=tf.float32, shape=[None, None, self.n_features, 1])
+                utf.validate_tensor(input_length, dtype=tf.int32, shape=[None, 1])
+                utf.validate_tensor(label_length, dtype=tf.int32, shape=[None, 1])
+                utf.validate_tensor(labels, dtype=tf.int32, shape=[None, None])
+
             with tf.name_scope("DeepSpeech2"):
-                logits = self.acoustic_model(self.features, self.is_train)  # shape: [batch_size, max_time, num_classes]
+                logits = self.acoustic_model(features, self.is_train)  # shape: [batch_size, max_time, num_classes]
                 ctc_input_length = self.compute_length_after_conv(
-                    max_time_steps=tf.shape(self.features)[1],
+                    max_time_steps=tf.shape(features)[1],
                     ctc_time_steps=tf.shape(logits)[1],
-                    input_length=self.input_length)
+                    input_length=input_length)
                 ctc_input_length = tf.squeeze(ctc_input_length)
 
-            # todo: Use external decode instead.
             with tf.name_scope("decode"):
                 # decode: single element list    decode[0]: sparse tensor
                 decode, _ = tf.nn.ctc_greedy_decoder(
@@ -64,7 +95,7 @@ class Model(StaticModel):
                 # tf.summary.scalar(name="ler", tensor=self.ler)
 
             with tf.name_scope("Loss"):
-                sparse_labels = tf.to_int32(tf.keras.backend.ctc_label_dense_to_sparse(self.labels, self.label_length))
+                sparse_labels = tf.to_int32(tf.keras.backend.ctc_label_dense_to_sparse(labels, label_length))
                 pred = tf.log(logits + tf.keras.backend.epsilon())
 
                 batch_ctc_loss = tf.nn.ctc_loss(
@@ -109,48 +140,23 @@ class Model(StaticModel):
         return tf.to_int32(tf.floordiv(
             tf.to_float(tf.multiply(input_length, ctc_time_steps)), tf.to_float(max_time_steps)))
 
-    def train(self, sess: tf.Session, features: Union[np.ndarray, List],
-              input_length: Union[np.ndarray, List], label_length: Union[np.ndarray, List],
-              labels: Union[np.ndarray, List]):
-        """Train Stage
-        :return: train_loss, train_summary
-        """
-        feed_dict = {
-            self.features: features,
-            self.input_length: input_length,
-            self.label_length: label_length,
-            self.labels: labels,
-            self.is_train: True
-        }
-        loss, _, summary = sess.run([self.loss, self.train_op, self.merge_summary], feed_dict=feed_dict)
+    def stage_init(self, sess: tf.Session, input_files: List[str], batch_size: int):
+        sess.run(
+            self.data_init,
+            feed_dict={self.input_files: input_files, self.batch_size: batch_size})
+
+    def train(self, sess: tf.Session):
+        loss, _, summary = sess.run([self.loss, self.train_op, self.merge_summary], feed_dict={self.is_train: True})
         return loss, summary
 
-    def eval(self, sess: tf.Session, features: Union[np.ndarray, List],
-             input_length: Union[np.ndarray, List], label_length: Union[np.ndarray, List],
-             labels: Union[np.ndarray, List]):
-        """Eval Stage
-        :return: eval_loss, eval_summary, eval_results
-        """
-        feed_dict = {
-            self.features: features,
-            self.input_length: input_length,
-            self.label_length: label_length,
-            self.labels: labels,
-            self.is_train: False
-        }
-        loss, summary, results = sess.run([self.loss, self.merge_summary, self.decoded], feed_dict=feed_dict)
+    def eval(self, sess: tf.Session):
+        loss, summary, results = sess.run([self.loss, self.merge_summary, self.decoded],
+                                          feed_dict={self.is_train: False})
         results = [unp.trim(v, -1, "b").tolist() for v in results]  # drop -1 in tails, method from `_utils`
         return loss, summary, results
 
-    def predict(self, sess: tf.Session, features: Union[np.ndarray, List], input_length: Union[np.ndarray, List]):
-        """Predict Stage
-        :return: test_results
-        """
-        feed_dict = {
-            self.features: features,
-            self.input_length: input_length,
-            self.is_train: False
-        }
-        results = sess.run(self.decoded, feed_dict=feed_dict)
+    def predict(self, sess: tf.Session):
+        results = sess.run(self.decoded, feed_dict={self.is_train: False})
         results = [unp.trim(v, -1, "b").tolist() for v in results]  # drop -1 in tails, method from `_utils`
         return results
+

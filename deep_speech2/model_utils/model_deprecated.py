@@ -1,4 +1,8 @@
-"""Contains DeepSpeech2 model."""
+"""
+Contains DeepSpeech2 model.
+Based on estimator's requirements.
+@Deprecated.
+"""
 
 import tensorflow as tf
 from deep_speech2.model_utils.network_deprecated import DeepSpeech2
