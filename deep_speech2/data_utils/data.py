@@ -124,7 +124,7 @@ class DataGenerator(object):
         print("Saving {partition} file as record into {file}".format(partition=self.partition, file=file))
         saver = utf.record.RecordSaver(file)
         saver.save(self._data, length=len(self._data), desc="{} Saving".format(self.partition.upper()),
-                   keys=["features", "input_length", "labels", "label_length"], element_func=_gen_data)
+                   keys=["features", "labels", "true_length", "label_length"], element_func=_gen_data)
         print("Saved successfully!")
 
     def process_utterance(self, audio_file: str, transcript: str, text_sep: Optional[str]=None) -> (np.ndarray, List):
