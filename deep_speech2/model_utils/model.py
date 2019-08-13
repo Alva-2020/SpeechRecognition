@@ -24,14 +24,9 @@ class Model(object):
         self.num_classes = num_classes
         self.n_features = n_features
         self.lr = learning_rate
-        self._graph = self._build_graph()
+        self.graph = self._build_graph()
         self.data_reader: Optional[utf.record.RecordReader] =\
             utf.record.RecordReader(feature_descriptions) if feature_descriptions else None
-
-
-    @property
-    def graph(self):
-        return self._graph
 
     @property
     def graph_init(self):
@@ -64,7 +59,7 @@ class Model(object):
     def _build_graph(self):
         graph = tf.Graph()
         tf.reset_default_graph()
-        with self._graph.as_default():
+        with graph.as_default():
             with tf.name_scope("Input"):
                 self.input_files = tf.placeholder(dtype=tf.string, shape=[None], name="files_path")
                 self.batch_size = tf.placeholder(dtype=tf.int64, shape=[1], name="batch_size")  # must be int64
