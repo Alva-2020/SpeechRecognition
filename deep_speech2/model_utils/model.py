@@ -49,7 +49,7 @@ class Model(object):
         data = self.data_reader.read(input_files)
         data = data.shuffle(buffer_size=100)
         data = data.padded_batch(batch_size=batch_size,
-                                 padded_shapes={"features": [None, None, 1], "labels": [None], "input_length": None, "label_length": None},
+                                 padded_shapes={"features": [None, None, 1], "labels": [None], "true_length": None, "label_length": None},
                                  padding_values={"features": 0., "labels": self.num_classes - 1})
         iterator = data.make_initializable_iterator()
         return iterator
@@ -68,7 +68,7 @@ class Model(object):
                 self.data_init = self.data_iterator.initializer
                 next_iter = self.data_iterator.get_next()
                 self.features, self.input_length, self.label_length, self.labels =\
-                    [next_iter[key] for key in ["features", "input_length", "label_length", "labels"]]
+                    [next_iter[key] for key in ["features", "true_length", "label_length", "labels"]]
 
                 # check input data tensor's attribute
                 utf.tensor.validate_tensor(self.features, dtype=tf.float32, shape=[None, None, self.n_features, 1])
