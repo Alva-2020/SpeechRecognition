@@ -5,6 +5,7 @@ Contains DeepSpeech2 model.
 Based on model without placeholders which are replaced by `dataset` api
 """
 
+import os
 import tensorflow as tf
 import _utils.numpy as unp
 import _utils.tensorflow as utf
@@ -45,9 +46,14 @@ class Model(object):
         print("Loading model successfully!")
 
     def set_data_reader(self, config_file: str):
+        if not os.path.exists(config_file):
+            raise IOError("File {} not exists".format(config_file))
         self.data_reader = utf.record.RecordReader.from_config(config_file)
 
     def _build_data(self, input_files: tf.Tensor, batch_size: tf.Tensor) -> tf.data.Iterator:
+        if self.data_reader is None:
+            raise ValueError("data reader is empty!")
+        print(self.data_reader.feature_description)
         data = self.data_reader.read(input_files)
         data = data.shuffle(buffer_size=100)
         data = data.padded_batch(batch_size=batch_size,
