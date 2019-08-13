@@ -114,6 +114,8 @@ if __name__ == '__main__':
         if not os.path.exists(file):
             print("Record of {} not exists, start rebuilding.".format(partition))
             data.write_to_record(file)
+        else:
+            print("Record of {} already exists, will loading...".format(partition))
 
     feature_config_file = os.path.join(model_dir, "train_data.xml")
     model = Model(num_classes=train_data.num_classes, n_features=train_data.n_features, **model_params)
