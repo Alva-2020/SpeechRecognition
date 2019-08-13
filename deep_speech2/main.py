@@ -103,7 +103,7 @@ if __name__ == '__main__':
 
     # Save data
     train_data = DataGenerator(partition="train", keep_transcription_text=False, **input_params)
-    eval_data = DataGenerator(partition="eval", keep_transcription_text=False, **input_params)
+    eval_data = DataGenerator(partition="dev", keep_transcription_text=False, **input_params)
 
     data_path_mapping = {
         "train": [os.path.join(model_dir, "train_data.record"), train_data],

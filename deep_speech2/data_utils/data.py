@@ -96,7 +96,7 @@ class DataGenerator(object):
         if max_duration < min_duration:
             raise ValueError("The max duration should be no smaller than min duration.")
         if partition not in {'train', 'dev', 'test'}:
-            raise ValueError("Invalid data_type %s, possible choices are ['train', 'dev', 'test'.]" % partition)
+            raise ValueError("Invalid data_type '%s', possible choices are ['train', 'dev', 'test'.]" % partition)
 
         data = read_data(data_file=data_file, data_tag=data_tag, to_dict=False)
         transcript_column = get_vocab_column(vocab_type)

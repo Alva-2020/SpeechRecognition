@@ -47,7 +47,7 @@ def _transform_thchs30(source_dir: str, correction_file: Optional[str]=None):
     data_dir, train_dir, test_dir, dev_dir = [os.path.join(source_dir, x) for x in ["data", "train", "test", "dev"]]
     train_sets, test_sets, dev_sets = [_get_partition_files_thch30(x) for x in [train_dir, test_dir, dev_dir]]
 
-    for file in tqdm.tqdm(glob.glob(os.path.join(data_dir, "*.trn"))):
+    for file in tqdm.tqdm(glob.glob(os.path.join(data_dir, "*.trn")), desc="THCHS30"):
         wav_file = file.strip(".trn")
         duration = _get_duration(wav_file)
         wav_name = os.path.splitext(os.path.basename(wav_file))[0]
@@ -108,7 +108,7 @@ def _transform_aishell(source_dir: str, correction_file: str):
     wav_dir = os.path.join(source_dir, "wav")
     file_content_mapping = _load_transcript_aishell(transcript_file)
     for partition in ["train", "test", "dev"]:
-        for wav_file in tqdm.tqdm(glob.glob(os.path.join(wav_dir, partition, "*/*.wav"))):
+        for wav_file in tqdm.tqdm(glob.glob(os.path.join(wav_dir, partition, "*/*.wav")), desc="Aishell %s" % partition):
             duration = _get_duration(wav_file)
             filename, _ = os.path.splitext(os.path.basename(wav_file))
             if filename in file_content_mapping:
