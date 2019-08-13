@@ -25,9 +25,9 @@ class Model(object):
         self.num_classes = num_classes
         self.n_features = n_features
         self.lr = learning_rate
-        self.graph = self._build_graph()
         self.data_reader: utf.record.RecordReader = utf.record.RecordReader(feature_descriptions)
-
+        self.graph = self._build_graph()
+        
     @property
     def graph_init(self):
         return self._graph_init
