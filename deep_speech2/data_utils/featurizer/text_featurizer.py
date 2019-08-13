@@ -48,7 +48,7 @@ class TextFeaturizer(object):
             for line in f:
                 line = line[:-1]  # strip the "\n", "\r" chars
                 if line:
-                    vocab_list.append(line)
+                    vocab_list.append(line)  # The last char would be indicating the blank.
 
         vocab_dict = {token: i for i, token in enumerate(vocab_list)}
         return vocab_dict, vocab_list

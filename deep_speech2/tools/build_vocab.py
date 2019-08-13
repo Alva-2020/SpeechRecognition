@@ -114,9 +114,9 @@ class VocabBuilder(object):
 
 def save_vocab(vocab: List[str], filepath: str) -> None:
     with open(filepath, "w", encoding="utf-8") as f:
-        f.write(_BLANK_CHAR + "\n")  # add a blank char to the first for ctc decoder
         for char in vocab:
             f.write(char + "\n")
+        f.write(_BLANK_CHAR + "\n")  # add a blank char to the end for ctc decoder
 
 
 if __name__ == "__main__":

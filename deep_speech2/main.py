@@ -5,13 +5,13 @@ import os
 import sys
 import argparse
 import time
-import dill as pickle
+import math
 import tensorflow as tf
 from deep_speech2.model_utils.model import Model
 from deep_speech2.data_utils.data import DataGenerator
 from deep_speech2.tools.metrics import EditDistance
 from _utils.confighandler import ConfigHandler
-from _utils.tensorflow import get_ckpt_global_step
+from _utils.tensorflow.utils import get_ckpt_global_step
 from typing import List, Dict, Any
 from tqdm import tqdm
 
@@ -49,11 +49,10 @@ def get_args(arg_parser: argparse.ArgumentParser,
 
 def get_data_params(args: Dict[str, Any]) -> Dict[str, Any]:
     return dict(
-        data_file=args["data_file"], batch_size=args["batch_size"], vocab_file=args["vocab_file"],
-        vocab_type=args["vocab_type"], mean_std_file=args["mean_std_file"], stride_ms=args["stride_ms"],
-        window_ms=args["window_ms"], max_freq=args["max_freq"], sample_rate=args["sample_rate"],
-        specgram_type=args["specgram_type"], use_dB_normalization=args["use_dB_normalization"],
-        random_seed=args["random_seed"])
+        data_file=args["data_file"], vocab_file=args["vocab_file"], vocab_type=args["vocab_type"],
+        mean_std_file=args["mean_std_file"], stride_ms=args["stride_ms"], window_ms=args["window_ms"],
+        max_freq=args["max_freq"], sample_rate=args["sample_rate"], specgram_type=args["specgram_type"],
+        use_dB_normalization=args["use_dB_normalization"], random_seed=args["random_seed"])
 
 
 def get_model_params(args: Dict[str, Any]) -> Dict[str, Any]:
@@ -64,10 +63,8 @@ def get_model_params(args: Dict[str, Any]) -> Dict[str, Any]:
 
 def build_session(graph):
     config = tf.ConfigProto()
-    config.gpu_options.per_process_gpu_memory_fraction = 0.8  # 程序最多只能占用指定gpu80%的显存
-    config.gpu_options.allow_growth = True  # 程序按需申请内存
-    sess = tf.Session(graph=graph, config=config)
-    return sess
+    config.gpu_options.per_process_gpu_memory_fraction = 0.8
+    return tf.Session(graph=graph, config=config)
 
 
 if __name__ == '__main__':
@@ -103,12 +100,24 @@ if __name__ == '__main__':
     input_params = get_data_params(args)
     model_params = get_model_params(args)
     model_dir = args["model_dir"]
-    train_data_path = os.path.join(model_dir, "train_data.pickle")
-    eval_data_path = os.path.join(model_dir, "eval_data.pickle")
 
-    train_data = DataGenerator(data_type="train", keep_transcription_text=False, **input_params)
-    eval_data = DataGenerator(data_type="dev", keep_transcription_text=False, **input_params)
+    # Save data
+    train_data = DataGenerator(partition="train", keep_transcription_text=False, **input_params)
+    eval_data = DataGenerator(partition="eval", keep_transcription_text=False, **input_params)
+
+    data_path_mapping = {
+        "train": [os.path.join(model_dir, "train_data.record"), train_data],
+        "eval": [os.path.join(model_dir, "eval_data.record"), eval_data],
+    }
+
+    for partition, (file, data) in data_path_mapping.items():
+        if not os.path.exists(file):
+            print("Record of {} not exists, start rebuilding.".format(partition))
+            data.write_to_record(file)
+
+    feature_config_file = os.path.join(model_dir, "train_data.xml")
     model = Model(num_classes=train_data.num_classes, n_features=train_data.n_features, **model_params)
+    model.set_data_reader(feature_config_file)
     sess = build_session(model.graph)
     train_writer = tf.summary.FileWriter(logdir=os.path.join(model_dir, "train"), graph=sess.graph)
     eval_writer = tf.summary.FileWriter(logdir=os.path.join(model_dir, "test"))
@@ -122,6 +131,7 @@ if __name__ == '__main__':
         old_epoch = 0
 
     epochs = args["epochs"]
+    batch_size = args["batch_size"]
     old_eval_loss = float("inf")
     train_step = 0
     for epoch in range(epochs):
@@ -130,41 +140,47 @@ if __name__ == '__main__':
         # 1.1. init
         train_loss = 0.
         tic = time.time()
-        for i in tqdm(range(train_data.n_batches), desc="Epoch {}/{} Train Stage".format(epoch + 1, epochs)):
-
-            loss, train_summary = model.train(
-                sess, features=train_data[i].features, labels=train_data[i].labels,
-                input_length=train_data[i].input_length, label_length=train_data[i].label_length)
-
-            train_loss += loss
-            train_step += 1
-            train_writer.add_summary(train_summary, train_step)
+        n_train_batches = int(math.ceil(len(train_data) / batch_size))
+        model.stage_init(sess, [data_path_mapping["train"][0]], batch_size)
+        iteration = 0
+        for i in tqdm(range(n_train_batches), desc="Epoch {}/{} Train Stage".format(epoch + 1, epochs)):
+            try:
+                loss, train_summary = model.train(sess)
+                train_loss += loss
+                train_step += 1
+                train_writer.add_summary(train_summary, train_step)
+            except tf.errors.OutOfRangeError:
+                break
+            iteration += 1
 
         # 1.2 print train log
         toc = time.time()
-        train_loss /= train_data.n_batches
+        train_loss /= iteration
         print("{} stage cost: {:.4f}, time using: {:.2f}".format("Train", train_loss, toc - tic))
 
         # 2. Eval Stage
         # 2.1. int
         eval_loss, cer = 0., 0.
         tic = time.time()
+        n_eval_batches = int(math.ceil(len(eval_data) / batch_size))
         eval_step = train_step
-        for i in tqdm(range(eval_data.n_batches), desc="Epoch {}/{} Eval Stage".format(epoch + 1, epochs)):
-
-            loss, eval_summary, eval_results = model.eval(
-                sess, features=eval_data[i].features, labels=eval_data[i].labels,
-                input_length=eval_data[i].input_length, label_length=eval_data[i].label_length)
-
-            cer += EditDistance.char_error_rate(eval_results, eval_data[i].labels)
-            eval_loss += loss
-            eval_step += 1
-            eval_writer.add_summary(eval_summary, eval_step)
+        model.stage_init(sess, [data_path_mapping["eval"][0]], batch_size)
+        iteration = 0
+        for i in tqdm(range(n_eval_batches), desc="Epoch {}/{} Eval Stage".format(epoch + 1, epochs)):
+            try:
+                loss, eval_summary, eval_results, eval_labels = model.eval(sess)
+                cer += EditDistance.char_error_rate(eval_results, eval_labels)
+                eval_loss += loss
+                eval_step += 1
+                eval_writer.add_summary(eval_summary, eval_step)
+            except tf.errors.OutOfRangeError:
+                break
+            iteration += 1
 
         # 2.2. print eval log
         toc = time.time()
-        eval_loss /= eval_data.n_batches
-        cer /= eval_data.n_batches
+        eval_loss /= iteration
+        cer /= iteration
         print("{} stage cost: {:.4f}, cer: {:.2f}, time using: {:.2f}".format("Eval", eval_loss, cer, toc - tic))
         if eval_loss < old_eval_loss:
             model.saver.save(
@@ -172,8 +188,6 @@ if __name__ == '__main__':
             old_eval_loss = eval_loss
         else:
             print("Eval loss not improved, before {:4f}, current {:4f}".format(old_eval_loss, eval_loss))
-
-        train_data.shuffle()
 
     train_writer.close()
     eval_writer.close()
