@@ -17,7 +17,7 @@ class Model(object):
 
     def __init__(self, num_classes: int, n_features: int, rnn_hidden_layers: int, rnn_type: str,
                  is_bidirectional: bool, rnn_hidden_size: int, fc_use_bias: bool, learning_rate: float,
-                 feature_descriptions: Optional[Dict[str, Union[tf.FixedLenFeature, tf.VarLenFeature]]]=None):
+                 feature_descriptions: Dict[str, Union[tf.FixedLenFeature, tf.VarLenFeature]]):
 
         self.acoustic_model = DeepSpeech2(
             num_rnn_layers=rnn_hidden_layers, rnn_type=rnn_type, is_bidirectional=is_bidirectional,
@@ -26,8 +26,7 @@ class Model(object):
         self.n_features = n_features
         self.lr = learning_rate
         self.graph = self._build_graph()
-        self.data_reader: Optional[utf.record.RecordReader] =\
-            utf.record.RecordReader(feature_descriptions) if feature_descriptions else None
+        self.data_reader: utf.record.RecordReader = utf.record.RecordReader(feature_descriptions)
 
     @property
     def graph_init(self):
@@ -45,14 +44,7 @@ class Model(object):
         self.saver.restore(sess, ckpt_path)
         print("Loading model successfully!")
 
-    def set_data_reader(self, config_file: str):
-        if not os.path.exists(config_file):
-            raise IOError("File {} not exists".format(config_file))
-        self.data_reader = utf.record.RecordReader.from_config(config_file)
-
     def _build_data(self, input_files: tf.Tensor, batch_size: tf.Tensor) -> tf.data.Iterator:
-        if self.data_reader is None:
-            raise ValueError("data reader is empty!")
         print(self.data_reader.feature_description)
         data = self.data_reader.read(input_files)
         data = data.shuffle(buffer_size=100)

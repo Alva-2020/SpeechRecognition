@@ -12,6 +12,7 @@ from deep_speech2.data_utils.data import DataGenerator
 from deep_speech2.tools.metrics import EditDistance
 from _utils.confighandler import ConfigHandler
 from _utils.tensorflow.utils import get_ckpt_global_step
+from _utils.tensorflow.record import generate_feature_desc
 from typing import List, Dict, Any
 from tqdm import tqdm
 
@@ -117,9 +118,9 @@ if __name__ == '__main__':
         else:
             print("Record of {} already exists, will loading...".format(partition))
 
-    feature_config_file = os.path.join(model_dir, "train_data.xml")
-    model = Model(num_classes=train_data.num_classes, n_features=train_data.n_features, **model_params)
-    model.set_data_reader(feature_config_file)
+    feature_descriptions = generate_feature_desc(os.path.join(model_dir, "train_data.xml"))
+    model = Model(num_classes=train_data.num_classes, n_features=train_data.n_features,
+                  feature_descriptions=feature_descriptions, **model_params)
     sess = build_session(model.graph)
     train_writer = tf.summary.FileWriter(logdir=os.path.join(model_dir, "train"), graph=sess.graph)
     eval_writer = tf.summary.FileWriter(logdir=os.path.join(model_dir, "test"))
