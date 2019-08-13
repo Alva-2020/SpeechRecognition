@@ -27,7 +27,7 @@ class Model(object):
         self.lr = learning_rate
         self.data_reader: utf.record.RecordReader = utf.record.RecordReader(feature_descriptions)
         self.graph = self._build_graph()
-        
+
     @property
     def graph_init(self):
         return self._graph_init
@@ -49,7 +49,7 @@ class Model(object):
         data = self.data_reader.read(input_files)
         data = data.shuffle(buffer_size=100)
         data = data.padded_batch(batch_size=batch_size,
-                                 padded_shapes={"features": [None, None, 1], "labels": [None]},
+                                 padded_shapes={"features": [None, None, 1], "labels": [None], "input_length": None, "label_length": None},
                                  padding_values={"features": 0., "labels": self.num_classes - 1})
         iterator = data.make_initializable_iterator()
         return iterator
