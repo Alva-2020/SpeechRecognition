@@ -97,11 +97,13 @@ class Model(object):
                     ctc_time_steps=tf.shape(logits)[1],
                     input_length=self.input_length)
                 ctc_input_length = tf.squeeze(ctc_input_length)
+                logits = tf.transpose(logits, perm=[1, 0, 2])  # shape: [max_time, batch_size, num_classes]
+                probs = tf.nn.softmax(logits)  # shape: [max_time, batch_size, num_classes]
 
             with tf.name_scope("decode"):
                 # decode: single element list    decode[0]: sparse tensor
                 decode, _ = tf.nn.ctc_greedy_decoder(
-                    inputs=tf.transpose(logits, perm=[1, 0, 2]), sequence_length=ctc_input_length,
+                    inputs=logits, sequence_length=ctc_input_length,
                     merge_repeated=True)
                 self.decoded =\
                     tf.sparse_tensor_to_dense(decode[0], default_value=-1)  # -1 indicates the end of result
@@ -109,8 +111,10 @@ class Model(object):
                 # tf.summary.scalar(name="ler", tensor=self.ler)
 
             with tf.name_scope("Loss"):
-                sparse_labels = tf.to_int32(tf.keras.backend.ctc_label_dense_to_sparse(self.labels, self.label_length))
-                pred = tf.log(logits + tf.keras.backend.epsilon())
+                sparse_labels = tf.cast(
+                    tf.keras.backend.ctc_label_dense_to_sparse(self.labels, tf.squeeze(self.label_length)),
+                    dtype=tf.int32)
+                pred = tf.log(probs + tf.keras.backend.epsilon())
 
                 batch_ctc_loss = tf.nn.ctc_loss(
                     labels=sparse_labels, inputs=pred, sequence_length=ctc_input_length, time_major=False)
@@ -118,8 +122,6 @@ class Model(object):
 
             tf.summary.scalar(name="ctc_loss", tensor=self.loss)
 
-            self.classes = tf.argmax(logits, axis=2)
-            self.probs = tf.nn.softmax(logits)
             global_step = tf.train.get_or_create_global_step()
             minimize_op = tf.train.AdamOptimizer(learning_rate=self.lr)\
                 .minimize(self.loss, global_step=global_step)
@@ -151,8 +153,11 @@ class Model(object):
         :param input_length: actual length of the original spectrogram, without padding.
         :return: the ctc_input_length after convolution layer.
         """
-        return tf.to_int32(tf.floordiv(
-            tf.to_float(tf.multiply(input_length, ctc_time_steps)), tf.to_float(max_time_steps)))
+        return tf.cast(
+            tf.floordiv(
+                tf.cast(tf.multiply(input_length, ctc_time_steps), dtype=tf.float32),
+                tf.cast(max_time_steps, dtype=tf.float32)),
+            dtype=tf.int32)
 
     def stage_init(self, sess: tf.Session, input_files: List[str], batch_size: int):
         sess.run(
