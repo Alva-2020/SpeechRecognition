@@ -53,8 +53,8 @@ class Model(object):
             padded_shapes={
                 "features": [None, self.n_features, 1],
                 "labels": [None],
-                "true_length": [None],
-                "label_length": [None]},
+                "true_length": [1],
+                "label_length": [1]},
             padding_values={
                 "features": np.float32(0),
                 "labels": np.int64(self.num_classes - 1),  # padded with blank index
