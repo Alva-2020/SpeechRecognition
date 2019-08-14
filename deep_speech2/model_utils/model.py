@@ -5,7 +5,7 @@ Contains DeepSpeech2 model.
 Based on model without placeholders which are replaced by `dataset` api
 """
 
-import os
+import numpy as np
 import tensorflow as tf
 import _utils.numpy as unp
 import _utils.tensorflow as utf
@@ -53,13 +53,13 @@ class Model(object):
             padded_shapes={
                 "features": [None, self.n_features, 1],
                 "labels": [None],
-                "true_length": None,
-                "label_length": None},
+                "true_length": [None],
+                "label_length": [None]},
             padding_values={
-                "features": 0.,
-                "labels": self.num_classes - 1,  # padded with blank index
-                "true_length": 0,
-                "label_length": 0})
+                "features": np.float32(0),
+                "labels": np.int64(self.num_classes - 1),  # padded with blank index
+                "true_length": np.int64(0),
+                "label_length": np.int64(0)})
         iterator = data.make_initializable_iterator()
         return iterator
 
