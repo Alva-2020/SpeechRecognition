@@ -92,18 +92,17 @@ class Model(object):
 
             with tf.name_scope("DeepSpeech2"):
                 logits = self.acoustic_model(self.features, self.is_train)  # shape: [batch_size, max_time, num_classes]
+                probs = tf.nn.softmax(logits)  # shape: [batch_size, max_time, num_classes]
                 ctc_input_length = self.compute_length_after_conv(
                     max_time_steps=tf.shape(self.features)[1],
-                    ctc_time_steps=tf.shape(logits)[1],
+                    ctc_time_steps=tf.shape(probs)[1],
                     input_length=self.input_length)
                 ctc_input_length = tf.squeeze(ctc_input_length)
-                logits = tf.transpose(logits, perm=[1, 0, 2])  # shape: [max_time, batch_size, num_classes]
-                probs = tf.nn.softmax(logits)  # shape: [max_time, batch_size, num_classes]
 
             with tf.name_scope("decode"):
                 # decode: single element list    decode[0]: sparse tensor
                 decode, _ = tf.nn.ctc_greedy_decoder(
-                    inputs=logits, sequence_length=ctc_input_length,
+                    inputs=tf.transpose(logits, perm=[1, 0, 2]), sequence_length=ctc_input_length,
                     merge_repeated=True)
                 self.decoded =\
                     tf.sparse_tensor_to_dense(decode[0], default_value=-1)  # -1 indicates the end of result
@@ -111,14 +110,7 @@ class Model(object):
                 # tf.summary.scalar(name="ler", tensor=self.ler)
 
             with tf.name_scope("Loss"):
-                sparse_labels = tf.cast(
-                    tf.keras.backend.ctc_label_dense_to_sparse(self.labels, tf.squeeze(self.label_length)),
-                    dtype=tf.int32)
-                pred = tf.log(probs + tf.keras.backend.epsilon())
-
-                batch_ctc_loss = tf.nn.ctc_loss(
-                    labels=sparse_labels, inputs=pred, sequence_length=ctc_input_length, time_major=False)
-                self.loss = tf.reduce_mean(batch_ctc_loss)
+                self.loss = tf.reduce_mean(self.ctc_loss(label_length, ctc_input_length, labels, probs))
 
             tf.summary.scalar(name="ctc_loss", tensor=self.loss)
 
@@ -158,6 +150,17 @@ class Model(object):
                 tf.cast(tf.multiply(input_length, ctc_time_steps), dtype=tf.float32),
                 tf.cast(max_time_steps, dtype=tf.float32)),
             dtype=tf.int32)
+
+    @staticmethod
+    def ctc_loss(label_length, ctc_input_length, labels, probs):
+        """Compute the ctc loss for current batch of predictions"""
+        label_length = tf.cast(tf.squeeze(label_length), dtype=tf.int32)
+        ctc_input_length = tf.cast(tf.squeeze(ctc_input_length), dtype=tf.int32)
+        sparse_labels = tf.cast(
+            tf.keras.backend.ctc_label_dense_to_sparse(labels, label_length), dtype=tf.int32)
+        y_pred = tf.log(tf.transpose(probs, perm=[1, 0, 2]) + tf.keras.backend.epsilon())
+        return tf.expand_dims(
+            tf.nn.ctc_loss(labels=sparse_labels, inputs=y_pred, sequence_length=ctc_input_length), axis=1)
 
     def stage_init(self, sess: tf.Session, input_files: List[str], batch_size: int):
         sess.run(
