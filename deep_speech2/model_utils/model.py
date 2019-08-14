@@ -48,9 +48,18 @@ class Model(object):
         print(self.data_reader.feature_description)
         data = self.data_reader.read(input_files)
         data = data.shuffle(buffer_size=100)
-        data = data.padded_batch(batch_size=batch_size,
-                                 padded_shapes={"features": [None, None, 1], "labels": [None], "true_length": None, "label_length": None},
-                                 padding_values={"features": 0., "labels": self.num_classes - 1})
+        data = data.padded_batch(
+            batch_size=batch_size,
+            padded_shapes={
+                "features": [None, self.n_features, 1],
+                "labels": [None],
+                "true_length": None,
+                "label_length": None},
+            padding_values={
+                "features": 0.,
+                "labels": self.num_classes - 1,  # padded with blank index
+                "true_length": 0,
+                "label_length": 0})
         iterator = data.make_initializable_iterator()
         return iterator
 
