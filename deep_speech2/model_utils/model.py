@@ -76,8 +76,13 @@ class Model(object):
                 self.data_iterator = self._build_data(self.input_files, self.batch_size)
                 self.data_init = self.data_iterator.initializer
                 next_iter = self.data_iterator.get_next()
-                self.features, self.input_length, self.label_length, self.labels =\
+                features, input_length, label_length, labels =\
                     [next_iter[key] for key in ["features", "true_length", "label_length", "labels"]]
+
+                self.features = tf.cast(features, dtype=tf.float32)
+                self.input_length = tf.cast(input_length, dtype=tf.int32)
+                self.label_length = tf.cast(label_length, dtype=tf.int32)
+                self.labels = tf.cast(labels, dtype=tf.int32)
 
                 # check input data tensor's attribute
                 utf.tensor.validate_tensor(self.features, dtype=tf.float32, shape=[None, None, self.n_features, 1])
