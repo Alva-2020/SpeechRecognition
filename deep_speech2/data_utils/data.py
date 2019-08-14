@@ -82,7 +82,6 @@ class DataGenerator(object):
     def n_features(self):
         return self._speech_featurizer.n_features
 
-    @property
     def __len__(self):
         return len(self._data)
 
