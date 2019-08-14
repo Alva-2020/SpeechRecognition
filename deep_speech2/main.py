@@ -117,6 +117,7 @@ if __name__ == '__main__':
             data.write_to_record(file)
         else:
             print("Record of {} already exists, will loading...".format(partition))
+            print("Total num of samples for {partition}: {size}".format(partition=partition, size=len(data)))
 
     feature_descriptions = generate_feature_desc(os.path.join(model_dir, "train_data.xml"))
     model = Model(num_classes=train_data.num_classes, n_features=train_data.n_features,
@@ -135,6 +136,8 @@ if __name__ == '__main__':
 
     epochs = args["epochs"]
     batch_size = args["batch_size"]
+    print("Total Epochs: {}. Training batch size: {}".format(epochs, batch_size))
+
     old_eval_loss = float("inf")
     train_step = 0
     for epoch in range(epochs):
