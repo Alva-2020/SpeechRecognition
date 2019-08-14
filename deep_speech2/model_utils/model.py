@@ -69,8 +69,8 @@ class Model(object):
         with graph.as_default():
             with tf.name_scope("Input"):
                 self.input_files = tf.placeholder(dtype=tf.string, shape=[None], name="files_path")
-                self.batch_size = tf.placeholder(dtype=tf.int64, shape=[1], name="batch_size")  # must be int64
-                self.is_train = tf.placeholder(dtype=tf.bool, shape=[1], name="train_phase")
+                self.batch_size = tf.placeholder(dtype=tf.int64, shape=None, name="batch_size")  # must be int64
+                self.is_train = tf.placeholder(dtype=tf.bool, shape=None, name="train_phase")
 
             with tf.name_scope("Read"):
                 self.data_iterator = self._build_data(self.input_files, self.batch_size)
