@@ -51,6 +51,7 @@ class Model(object):
         print(self.data_reader.feature_description)
         data = self.data_reader.read(input_files)
         data = data.shuffle(buffer_size=100)
+        data = data.prefetch(buffer_size=1000)
         data = data.padded_batch(
             batch_size=batch_size,
             padded_shapes={
