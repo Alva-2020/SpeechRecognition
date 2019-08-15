@@ -77,6 +77,7 @@ class Model(object):
             with tf.name_scope("Read"):
                 self.data_iterator = self._build_data(self.input_files, self.batch_size)
                 self.data_init = self.data_iterator.initializer
+                inputs = [self.data_iterator.get_next() for _ in range(self.num_gpu)]
 
             with tf.name_scope("train"):
                 global_step = tf.get_variable("global_step", shape=[], initializer=tf.constant_initializer(0), trainable=False)
@@ -88,7 +89,7 @@ class Model(object):
                 for i in range(self.num_gpu):
                     with tf.device("/GPU:%d" % i):
                         with tf.name_scope("{tower_name}_{id}".format(tower_name=self.TOWER_NAME, id=i)) as scope:
-                            input_iter = self.data_iterator.get_next()
+                            input_iter = inputs[i]
                             loss = self.tower_loss(scope, input_iter, is_train=True, loss_key="train_loss")
                             # Reuse variables for the next tower.
                             tf.get_variable_scope().reuse_variables()
