@@ -92,18 +92,19 @@ def _rnn_layer(inputs: tf.Tensor, rnn_cell: tf.nn.rnn_cell.RNNCell, rnn_hidden_s
 
 
 class DeepSpeech2(object):
-    """
-    Initialize DeepSpeech2 model.
 
-    :param num_rnn_layers: an integer, the number of rnn layers. By default, it's 5.
-    :param rnn_type: a string, one of the supported rnn cells: gru, rnn and lstm.
-    :param is_bidirectional: a boolean to indicate if the rnn layer is bidirectional.
-    :param rnn_hidden_size: an integer for the number of hidden states in each unit.
-    :param num_classes: an integer, the number of output classes/labels.
-    :param fc_use_bias: a boolean specifying whether to use bias in the last fc layer.
-    """
     def __init__(self, num_rnn_layers: int, rnn_type: str, is_bidirectional: bool,
                  rnn_hidden_size: int, num_classes: int, fc_use_bias: bool):
+        """
+        Initialize DeepSpeech2 model.
+
+        :param num_rnn_layers: an integer, the number of rnn layers. By default, it's 5.
+        :param rnn_type: a string, one of the supported rnn cells: gru, rnn and lstm.
+        :param is_bidirectional: a boolean to indicate if the rnn layer is bidirectional.
+        :param rnn_hidden_size: an integer for the number of hidden states in each unit.
+        :param num_classes: an integer, the number of output classes/labels.
+        :param fc_use_bias: a boolean specifying whether to use bias in the last fc layer.
+        """
         if rnn_type not in SUPPORTED_RNNS:
             raise ValueError("Invalid rnn type %s. Possible choices are %s." % (rnn_type, str(SUPPORTED_RNNS.keys())))
         self.num_rnn_layers = num_rnn_layers
@@ -113,7 +114,7 @@ class DeepSpeech2(object):
         self.num_classes = num_classes
         self.fc_use_bias = fc_use_bias
 
-    def __call__(self, inputs: tf.Tensor, training: Union[bool, tf.Tensor]):
+    def inference(self, inputs: tf.Tensor, training: Union[bool, tf.Tensor]):
         # 1. Two CNN layers
         with tf.name_scope("cnn"):
             inputs = _conv_bn_layer(
@@ -142,8 +143,71 @@ class DeepSpeech2(object):
         with tf.name_scope("fc"):
             # 3. FC Layer with batch norm
             inputs = batch_norm(inputs, training)
-
             # shape: [batch_size, max_time, num_classes]
             logits = tf.layers.dense(inputs, units=self.num_classes, use_bias=self.fc_use_bias)
 
         return logits
+
+    @staticmethod
+    def _compute_length_after_conv(max_time_steps, ctc_time_steps, input_length) -> tf.Tensor:
+        """
+        Computes the time_steps/ctc_input_length after convolution.
+
+        Suppose that the original feature contains two parts:
+        1) Real spectrogram signals, spanning input_length steps.
+        2) Padded part with all 0s.
+        The total length of those two parts is denoted as max_time_steps, which is the padded length of the current batch.
+        After convolution layers, the time steps of a spectrogram feature will be decreased.
+        As we know the percentage of its original length within the entire length, we can compute the time steps
+        for the signal after convolution as follows (using ctc_input_length to denote):
+          `ctc_input_length` = (`input_length` / `max_time_steps`) * `output_length_of_conv`.
+        This length is then fed into ctc loss function to compute loss.
+
+        :param max_time_steps: max_time_steps for the batch, after padding.
+        :param ctc_time_steps: number of timesteps after convolution.
+        :param input_length: actual length of the original spectrogram, without padding.
+        :return: the ctc_input_length after convolution layer.
+        """
+        return tf.cast(tf.floordiv(tf.cast(tf.multiply(input_length, ctc_time_steps), dtype=tf.float32),
+                                   tf.cast(max_time_steps, dtype=tf.float32)),
+                       dtype=tf.int32)
+
+    @staticmethod
+    def _ctc_loss(label_length, ctc_input_length, labels, logits) -> tf.Tensor:
+        """Compute the ctc loss for current batch of predictions"""
+        ctc_input_length = tf.cast(tf.squeeze(ctc_input_length), dtype=tf.int32)
+        label_length = tf.cast(tf.squeeze(label_length), dtype=tf.int32)
+        probs = tf.nn.softmax(logits)
+
+        sparse_labels = tf.cast(
+            tf.keras.backend.ctc_label_dense_to_sparse(labels, label_length), dtype=tf.int32)
+        y_pred = tf.log(tf.transpose(probs, perm=[1, 0, 2]) + tf.keras.backend.epsilon())
+        losses = tf.nn.ctc_loss(labels=sparse_labels, inputs=y_pred, sequence_length=ctc_input_length)
+        return tf.reduce_mean(losses)
+
+    def ctc_loss(self, features, input_length, label_length, labels, is_train, loss_key: str):
+        """Compute the ctc loss for current batch of predictions by original input"""
+        logits = self.inference(inputs=features, training=is_train)
+        ctc_input_length = self._compute_length_after_conv(
+            max_time_steps=tf.shape(features)[1],
+            ctc_time_steps=tf.shape(logits)[1],
+            input_length=input_length)
+        loss = self._ctc_loss(label_length=label_length, ctc_input_length=ctc_input_length, labels=labels, logits=logits)
+
+        tf.add_to_collection(loss_key, loss)
+        return tf.add_n(inputs=tf.get_collection(key=loss_key))
+
+    def decode(self, features: tf.Tensor, input_length: tf.Tensor) -> tf.Tensor:
+        """Get the ctc decoded labels"""
+        logits = self.inference(inputs=features, training=False)
+        ctc_input_length = self._compute_length_after_conv(
+            max_time_steps=tf.shape(features)[1],
+            ctc_time_steps=tf.shape(logits)[1],
+            input_length=input_length)
+
+        decode_, _ = tf.nn.ctc_greedy_decoder(
+            inputs=tf.transpose(logits, perm=[1, 0, 2]), sequence_length=ctc_input_length,
+            merge_repeated=True)
+        return tf.sparse_tensor_to_dense(decode_[0], default_value=-1)  # -1 indicates the end of result
+
+

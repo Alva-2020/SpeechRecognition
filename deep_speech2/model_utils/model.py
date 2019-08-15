@@ -5,19 +5,21 @@ Contains DeepSpeech2 model.
 Based on model without placeholders which are replaced by `dataset` api
 """
 
+import re
 import numpy as np
 import tensorflow as tf
 import _utils.numpy as unp
 import _utils.tensorflow as utf
 from deep_speech2.model_utils.network import DeepSpeech2
-from typing import Union, List, Dict, Optional
+from typing import Union, List, Dict, Tuple
 
 
 class Model(object):
+    TOWER_NAME = "DeepSpeech2"
 
     def __init__(self, num_classes: int, n_features: int, rnn_hidden_layers: int, rnn_type: str,
                  is_bidirectional: bool, rnn_hidden_size: int, fc_use_bias: bool, learning_rate: float,
-                 feature_descriptions: Dict[str, Union[tf.FixedLenFeature, tf.VarLenFeature]]):
+                 feature_descriptions: Dict[str, Union[tf.FixedLenFeature, tf.VarLenFeature]], num_gpu: int=1):
 
         self.acoustic_model = DeepSpeech2(
             num_rnn_layers=rnn_hidden_layers, rnn_type=rnn_type, is_bidirectional=is_bidirectional,
@@ -25,6 +27,7 @@ class Model(object):
         self.num_classes = num_classes
         self.n_features = n_features
         self.lr = learning_rate
+        self.num_gpu = num_gpu
         self.data_reader: utf.record.RecordReader = utf.record.RecordReader(feature_descriptions)
         self.graph = self._build_graph()
 
@@ -66,101 +69,126 @@ class Model(object):
     def _build_graph(self):
         graph = tf.Graph()
         tf.reset_default_graph()
-        with graph.as_default():
+        with graph.as_default(), tf.device("/CPU:0"):
             with tf.name_scope("Input"):
                 self.input_files = tf.placeholder(dtype=tf.string, shape=[None], name="files_path")
                 self.batch_size = tf.placeholder(dtype=tf.int64, shape=None, name="batch_size")  # must be int64
-                self.is_train = tf.placeholder(dtype=tf.bool, shape=None, name="train_phase")
 
             with tf.name_scope("Read"):
                 self.data_iterator = self._build_data(self.input_files, self.batch_size)
                 self.data_init = self.data_iterator.initializer
-                next_iter = self.data_iterator.get_next()
-                features, input_length, label_length, labels =\
-                    [next_iter[key] for key in ["features", "true_length", "label_length", "labels"]]
 
-                self.features = tf.cast(features, dtype=tf.float32)
-                self.input_length = tf.cast(input_length, dtype=tf.int32)
-                self.label_length = tf.cast(label_length, dtype=tf.int32)
-                self.labels = tf.cast(labels, dtype=tf.int32)
+            with tf.name_scope("train"):
+                global_step = tf.get_variable("global_step", shape=[], initializer=tf.constant_initializer(0), trainable=False)
+                opt = tf.train.AdamOptimizer(learning_rate=self.lr)
 
-                # check input data tensor's attribute
-                utf.tensor.validate_tensor(self.features, dtype=tf.float32, shape=[None, None, self.n_features, 1])
-                utf.tensor.validate_tensor(self.input_length, dtype=tf.int32, shape=[None, 1])
-                utf.tensor.validate_tensor(self.label_length, dtype=tf.int32, shape=[None, 1])
-                utf.tensor.validate_tensor(self.labels, dtype=tf.int32, shape=[None, None])
-
-            with tf.name_scope("DeepSpeech2"):
-                logits = self.acoustic_model(self.features, self.is_train)  # shape: [batch_size, max_time, num_classes]
-                probs = tf.nn.softmax(logits)  # shape: [batch_size, max_time, num_classes]
-                ctc_input_length = self.compute_length_after_conv(
-                    max_time_steps=tf.shape(self.features)[1],
-                    ctc_time_steps=tf.shape(probs)[1],
-                    input_length=self.input_length)
-                ctc_input_length = tf.squeeze(ctc_input_length)
+            # Train on multi-gpu
+            tower_grads = []
+            with tf.variable_scope(tf.get_variable_scope()):
+                for i in range(self.num_gpu):
+                    with tf.device("/GPU:%d" % i):
+                        with tf.name_scope("{tower_name}_{id}".format(tower_name=self.TOWER_NAME, id=i)) as scope:
+                            input_iter = self.data_iterator.get_next()
+                            self.loss = self.tower_loss(scope, input_iter, is_train=True, loss_key="train_loss")
+                            # Reuse variables for the next tower.
+                            tf.get_variable_scope().reuse_variables()
+                            grads = opt.compute_gradients(self.loss)
+                            tower_grads.append(grads)
 
             with tf.name_scope("decode"):
-                # decode: single element list    decode[0]: sparse tensor
-                decode, _ = tf.nn.ctc_greedy_decoder(
-                    inputs=tf.transpose(logits, perm=[1, 0, 2]), sequence_length=ctc_input_length,
-                    merge_repeated=True)
-                self.decoded =\
-                    tf.sparse_tensor_to_dense(decode[0], default_value=-1)  # -1 indicates the end of result
-                # self.ler = tf.reduce_mean(tf.edit_distance(self.result, self.labels))
-                # tf.summary.scalar(name="ler", tensor=self.ler)
+                eval_input_iter = self.data_iterator.get_next()
+                self.eval_features, self.eval_input_length, self.eval_label_length, self.eval_labels =\
+                    self.read_input(eval_input_iter)
+                self.eval_loss = self.acoustic_model.ctc_loss(
+                    features=self.eval_features, input_length=self.eval_input_length,
+                    label_length=self.eval_label_length, labels=self.eval_labels, is_train=False, loss_key="eval_loss")
 
-            with tf.name_scope("Loss"):
-                self.loss = tf.reduce_mean(self.ctc_loss(label_length, ctc_input_length, labels, probs))
+                self.decoded = self.acoustic_model.decode(
+                    features=self.eval_features, input_length=self.eval_input_length)
 
-            tf.summary.scalar(name="ctc_loss", tensor=self.loss)
-
-            global_step = tf.train.get_or_create_global_step()
-            minimize_op = tf.train.AdamOptimizer(learning_rate=self.lr)\
-                .minimize(self.loss, global_step=global_step)
-            update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-            self.train_op = tf.group(minimize_op, update_ops)
-
+            grads = self.average_gradients(tower_grads)
+            self.train_op = opt.apply_gradients(grads, global_step=global_step)
             self._graph_init = tf.global_variables_initializer()
             self._saver = tf.train.Saver(max_to_keep=5)
             self.merge_summary = tf.summary.merge(tf.get_collection(tf.GraphKeys.SUMMARIES))
         return graph
 
-    @staticmethod
-    def compute_length_after_conv(max_time_steps, ctc_time_steps, input_length) -> tf.Tensor:
+    def read_input(self, input_iter):
+        features, input_length, label_length, labels = \
+            [input_iter[key] for key in ["features", "true_length", "label_length", "labels"]]
+
+        features = tf.cast(features, dtype=tf.float32)
+        input_length = tf.cast(input_length, dtype=tf.int32)
+        label_length = tf.cast(label_length, dtype=tf.int32)
+        labels = tf.cast(labels, dtype=tf.int32)
+
+        # check input data tensor's attribute
+        utf.tensor.validate_tensor(features, dtype=tf.float32, shape=[None, None, self.n_features, 1])
+        utf.tensor.validate_tensor(input_length, dtype=tf.int32, shape=[None, 1])
+        utf.tensor.validate_tensor(label_length, dtype=tf.int32, shape=[None, 1])
+        utf.tensor.validate_tensor(labels, dtype=tf.int32, shape=[None, None])
+
+        return features, input_length, label_length, labels
+
+    def tower_loss(self, scope: str, input_iter, is_train, loss_key: str="train_loss"):
         """
-        Computes the time_steps/ctc_input_length after convolution.
+        Calculate the total loss on a single tower running the CIFAR model.
 
-        Suppose that the original feature contains two parts:
-        1) Real spectrogram signals, spanning input_length steps.
-        2) Padded part with all 0s.
-        The total length of those two parts is denoted as max_time_steps, which is the padded length of the current batch.
-        After convolution layers, the time steps of a spectrogram feature will be decreased.
-        As we know the percentage of its original length within the entire length, we can compute the time steps
-        for the signal after convolution as follows (using ctc_input_length to denote):
-          `ctc_input_length` = (`input_length` / `max_time_steps`) * `output_length_of_conv`.
-        This length is then fed into ctc loss function to compute loss.
+        :param scope: unique prefix string identifying the tower, e.g. '{tower}_0'
+        :param input_iter: The input tensor mapping, e.g. {"features": ..., "true_length": ..., "label_length": ..., "labels": ...}
+        :param is_train: The train phase.
+        :param loss_key: The collection key to control where value being added.
 
-        :param max_time_steps: max_time_steps for the batch, after padding.
-        :param ctc_time_steps: number of timesteps after convolution.
-        :param input_length: actual length of the original spectrogram, without padding.
-        :return: the ctc_input_length after convolution layer.
+        :return: Tensor of shape [] containing the total loss for a batch of data
         """
-        return tf.cast(
-            tf.floordiv(
-                tf.cast(tf.multiply(input_length, ctc_time_steps), dtype=tf.float32),
-                tf.cast(max_time_steps, dtype=tf.float32)),
-            dtype=tf.int32)
+        features, input_length, label_length, labels = self.read_input(input_iter)
+
+        # Build the portion of the Graph calculating the losses.
+        # Note that we will assemble the total_loss using a custom function below.
+        _, key = self.acoustic_model.ctc_loss(
+            features, input_length, label_length, labels, is_train=is_train, loss_key=loss_key)
+
+        # Assemble all of the losses for the current tower only.
+        losses = tf.get_collection(key, scope)
+
+        # Calculate the total loss for the current tower.
+        total_loss = tf.add_n(losses)
+
+        # Attach a scalar summary to all individual losses and the total loss;
+        # do the same for the averaged version of the losses.
+        for l in losses + [total_loss]:
+            # Remove '{tower}_[0-9]/' from the name in case this is a multi-GPU training
+            # session. This helps the clarity of presentation on tensorboard.
+            loss_name = re.sub('%s_[0-9]*/' % self.TOWER_NAME, '', l.op.name)
+            tf.summary.scalar(loss_name, l)
+        return total_loss
 
     @staticmethod
-    def ctc_loss(label_length, ctc_input_length, labels, probs):
-        """Compute the ctc loss for current batch of predictions"""
-        label_length = tf.cast(tf.squeeze(label_length), dtype=tf.int32)
-        ctc_input_length = tf.cast(tf.squeeze(ctc_input_length), dtype=tf.int32)
-        sparse_labels = tf.cast(
-            tf.keras.backend.ctc_label_dense_to_sparse(labels, label_length), dtype=tf.int32)
-        y_pred = tf.log(tf.transpose(probs, perm=[1, 0, 2]) + tf.keras.backend.epsilon())
-        return tf.expand_dims(
-            tf.nn.ctc_loss(labels=sparse_labels, inputs=y_pred, sequence_length=ctc_input_length), axis=1)
+    def average_gradients(tower_grads: List[List[Tuple]]):
+        """
+        Calculate the average gradient for each shared variable across all towers.
+        Note that this function provides a synchronization point across all towers.
+        :param tower_grads: List
+        :return: List of pairs of (gradient, variable) where the gradient has been averaged across all towers.
+        """
+        average_grads = []
+        for grad_and_vars in zip(*tower_grads):
+            # Note that each grad_and_vars looks like the following:
+            # ((grad0_gpu0, var0_gpu0), ... , (grad0_gpuN, var0_gpuN))
+            grads = []
+            for g, _ in grad_and_vars:
+                # Add 0 dimension to the gradients to represent the tower.
+                expanded_g = tf.expand_dims(g, 0)
+                grads.append(expanded_g)
+
+            grad = tf.concat(grads, axis=0)
+            grad = tf.reduce_mean(grad, axis=0)
+
+            # Keep in mind that the Variables are redundant because they are shared
+            # across towers. So .. we will just return the first tower's pointer to the Variable.
+            v = grad_and_vars[0][1]
+            average_grads.append((grad, v))
+        return average_grads
 
     def stage_init(self, sess: tf.Session, input_files: List[str], batch_size: int):
         sess.run(
@@ -168,19 +196,14 @@ class Model(object):
             feed_dict={self.input_files: input_files, self.batch_size: batch_size})
 
     def train(self, sess: tf.Session):
-        loss, _, summary = sess.run([self.loss, self.train_op, self.merge_summary], feed_dict={self.is_train: True})
+        loss, _, summary = sess.run([self.loss, self.train_op, self.merge_summary])
         return loss, summary
 
     def eval(self, sess: tf.Session):
         loss, summary, results, labels, label_length =\
-            sess.run([self.loss, self.merge_summary, self.decoded, self.labels, self.label_length],
-                     feed_dict={self.is_train: False})
+            sess.run([self.eval_loss, self.merge_summary, self.decoded, self.eval_labels, self.eval_label_length])
         results = [unp.trim(v, -1, "b").tolist() for v in results]  # drop -1 in tails, method from `_utils`
-        labels = [label[:length] for label, length in zip(labels, label_length)]
+        labels = [label[:length].tolist() for label, length in zip(labels, label_length.reshape(-1,))]
         return loss, summary, results, labels
 
-    def predict(self, sess: tf.Session):
-        results = sess.run(self.decoded, feed_dict={self.is_train: False})
-        results = [unp.trim(v, -1, "b").tolist() for v in results]  # drop -1 in tails, method from `_utils`
-        return results
 

@@ -91,6 +91,7 @@ if __name__ == '__main__':
     parser.add_argument("--epochs", type=int, default=100, help="The training epochs.")
     parser.add_argument("--batch_size", type=int, default=4, help="The batch size of data fed in.")
     parser.add_argument("--learning_rate", type=float, default=5e-4, help="The learning rate of network.")
+    parser.add_argument("--gpu_num", type=int, default=2, help="The num of gpu for training.")
     args = get_args(parser)
 
     print("********** The total config **********")
@@ -149,7 +150,8 @@ if __name__ == '__main__':
         n_train_batches = int(math.ceil(len(train_data) / batch_size))
         model.stage_init(sess, [data_path_mapping["train"][0]], batch_size)
         iteration = 0
-        for i in tqdm(range(n_train_batches), desc="Epoch {}/{} Train Stage".format(epoch + 1, epochs)):
+        for i in tqdm(range(0, n_train_batches, step=args["gpu_num"]),
+                      desc="Epoch {}/{} Train Stage".format(epoch + 1, epochs)):
             try:
                 loss, train_summary = model.train(sess)
                 train_loss += loss
