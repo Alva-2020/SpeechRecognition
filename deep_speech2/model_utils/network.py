@@ -204,7 +204,7 @@ class DeepSpeech2(object):
             max_time_steps=tf.shape(features)[1],
             ctc_time_steps=tf.shape(logits)[1],
             input_length=input_length)
-
+        ctc_input_length = tf.cast(tf.squeeze(ctc_input_length), dtype=tf.int32)
         decode_, _ = tf.nn.ctc_greedy_decoder(
             inputs=tf.transpose(logits, perm=[1, 0, 2]), sequence_length=ctc_input_length,
             merge_repeated=True)
