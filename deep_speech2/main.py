@@ -64,6 +64,7 @@ def get_model_params(args: Dict[str, Any]) -> Dict[str, Any]:
 
 def build_session(graph):
     config = tf.ConfigProto()
+    config.allow_soft_placement = True
     config.gpu_options.per_process_gpu_memory_fraction = 0.8
     return tf.Session(graph=graph, config=config)
 
