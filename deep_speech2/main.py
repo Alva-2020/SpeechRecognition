@@ -96,6 +96,9 @@ if __name__ == '__main__':
     parser.add_argument("--gpu_num", type=int, default=2, help="The num of gpu for training.")
     args = get_args(parser)
 
+    if args["batch_size"] % args["gpu_num"] != 0:
+        raise ValueError("The `batch_size` must be `gpu_num` * N")
+
     print("********** The total config **********")
     for key, value in args.items():
         print("{key}: {value}\n".format(key=key, value=value))
