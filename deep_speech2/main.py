@@ -152,7 +152,7 @@ if __name__ == '__main__':
         n_train_batches = int(math.ceil(len(train_data) / batch_size))
         model.stage_init(sess, [data_path_mapping["train"][0]], batch_size)
         iteration = 0
-        for i in tqdm(range(0, n_train_batches, step=args["gpu_num"]),
+        for i in tqdm(range(0, n_train_batches, args["gpu_num"]),
                       desc="Epoch {}/{} Train Stage".format(epoch + 1, epochs)):
             try:
                 loss, train_summary = model.train(sess)
