@@ -118,15 +118,15 @@ class Model(object):
             [input_iter[key] for key in ["features", "true_length", "label_length", "labels"]]
 
         features = tf.cast(features, dtype=tf.float32)
-        input_length = tf.cast(input_length, dtype=tf.int32)
-        label_length = tf.cast(label_length, dtype=tf.int32)
-        labels = tf.cast(labels, dtype=tf.int32)
+        input_length = tf.cast(input_length, dtype=tf.int64)
+        label_length = tf.cast(label_length, dtype=tf.int64)
+        labels = tf.cast(labels, dtype=tf.int64)
 
         # check input data tensor's attribute
         utf.tensor.validate_tensor(features, dtype=tf.float32, shape=[None, None, self.n_features, 1])
-        utf.tensor.validate_tensor(input_length, dtype=tf.int32, shape=[None, 1])
-        utf.tensor.validate_tensor(label_length, dtype=tf.int32, shape=[None, 1])
-        utf.tensor.validate_tensor(labels, dtype=tf.int32, shape=[None, None])
+        utf.tensor.validate_tensor(input_length, dtype=tf.int64, shape=[None, 1])
+        utf.tensor.validate_tensor(label_length, dtype=tf.int64, shape=[None, 1])
+        utf.tensor.validate_tensor(labels, dtype=tf.int64, shape=[None, None])
 
         return features, input_length, label_length, labels
 
