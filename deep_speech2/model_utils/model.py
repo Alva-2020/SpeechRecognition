@@ -89,11 +89,13 @@ class Model(object):
                     with tf.device("/GPU:%d" % i):
                         with tf.name_scope("{tower_name}_{id}".format(tower_name=self.TOWER_NAME, id=i)) as scope:
                             input_iter = self.data_iterator.get_next()
-                            self.loss = self.tower_loss(scope, input_iter, is_train=True, loss_key="train_loss")
+                            loss = self.tower_loss(scope, input_iter, is_train=True, loss_key="train_loss")
                             # Reuse variables for the next tower.
                             tf.get_variable_scope().reuse_variables()
-                            grads = opt.compute_gradients(self.loss)
+                            grads = opt.compute_gradients(loss)
                             tower_grads.append(grads)
+
+            self.train_loss = tf.add_n(tf.get_collection("train_loss"))
 
             with tf.name_scope("decode"):
                 eval_input_iter = self.data_iterator.get_next()
@@ -159,7 +161,7 @@ class Model(object):
         for l in losses + [total_loss]:
             # Remove '{tower}_[0-9]/' from the name in case this is a multi-GPU training
             # session. This helps the clarity of presentation on tensorboard.
-            loss_name = re.sub('%s_[0-9]*/' % self.TOWER_NAME, '', l.op.name)
+            loss_name = re.sub('%s_' % self.TOWER_NAME, '', l.op.name)
             tf.summary.scalar(loss_name, l)
         return total_loss
 
@@ -196,7 +198,7 @@ class Model(object):
             feed_dict={self.input_files: input_files, self.batch_size: batch_size})
 
     def train(self, sess: tf.Session):
-        loss, _, summary = sess.run([self.loss, self.train_op, self.merge_summary])
+        loss, _, summary = sess.run([self.train_loss, self.train_op, self.merge_summary])
         return loss, summary
 
     def eval(self, sess: tf.Session):
