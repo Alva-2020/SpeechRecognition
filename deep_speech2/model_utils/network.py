@@ -116,7 +116,7 @@ class DeepSpeech2(object):
 
     def inference(self, inputs: tf.Tensor, training: Union[bool, tf.Tensor]):
         # 1. Two CNN layers
-        with tf.name_scope("cnn"):
+        with tf.variable_scope("cnn", reuse=True):
             inputs = _conv_bn_layer(
                 inputs, padding=(20, 5), filters=_CONV_FILTERS, kernel_size=(41, 11),
                 strides=(2, 2), layer_id=1, training=training)
@@ -125,13 +125,13 @@ class DeepSpeech2(object):
                 inputs, padding=(10, 5), filters=_CONV_FILTERS, kernel_size=(21, 11),
                 strides=(2, 1), layer_id=2, training=training)
 
-        with tf.name_scope("reshape"):
+        with tf.variable_scope("reshape", reuse=True):
             # output of conv_layer2 is of the shape [batch_size (N), times (T), features (F), channels (C)].
             batch_size = tf.shape(inputs)[0]
             feat_size = inputs.get_shape().as_list()[2]
             inputs = tf.reshape(inputs, shape=[batch_size, -1, feat_size * _CONV_FILTERS])
 
-        with tf.name_scope("rnn"):
+        with tf.variable_scope("rnn", reuse=True):
             # 2. RNN layers:
             for layer_counter in range(self.num_rnn_layers):
                 is_batch_norm = (layer_counter != 0)  # No batch normalization on the first layer.
@@ -140,7 +140,7 @@ class DeepSpeech2(object):
                     inputs=inputs, rnn_cell=self.rnn_cell, rnn_hidden_size=self.rnn_hidden_size, layer_id=layer_id,
                     is_batch_norm=is_batch_norm, is_bidirectional=self.is_bidirectional, training=training)
 
-        with tf.name_scope("fc"):
+        with tf.variable_scope("fc", reuse=True):
             # 3. FC Layer with batch norm
             inputs = batch_norm(inputs, training)
             # shape: [batch_size, max_time, num_classes]
@@ -185,7 +185,7 @@ class DeepSpeech2(object):
         losses = tf.nn.ctc_loss(labels=sparse_labels, inputs=y_pred, sequence_length=ctc_input_length)
         return tf.reduce_mean(losses)
 
-    def ctc_loss(self, features, input_length, label_length, labels, is_train, loss_key: str):
+    def ctc_loss(self, features, input_length, label_length, labels, is_train: Union[bool, tf.Tensor], loss_key: str):
         """Compute the ctc loss for current batch of predictions by original input"""
         logits = self.inference(inputs=features, training=is_train)
         ctc_input_length = self._compute_length_after_conv(
