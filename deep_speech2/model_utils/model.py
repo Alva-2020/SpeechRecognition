@@ -69,12 +69,12 @@ class Model(object):
     def _build_graph(self):
         graph = tf.Graph()
         tf.reset_default_graph()
-        with graph.as_default():
-            with tf.name_scope("Input"), tf.device("/CPU:0"):
+        with graph.as_default(), tf.device("/CPU:0"):
+            with tf.name_scope("Input"):
                 self.input_files = tf.placeholder(dtype=tf.string, shape=[None], name="files_path")
                 self.batch_size = tf.placeholder(dtype=tf.int64, shape=None, name="batch_size")  # must be int64
 
-            with tf.name_scope("Read"), tf.device("/CPU:0"):
+            with tf.name_scope("Read"):
                 self.data_iterator = self._build_data(self.input_files, self.batch_size)
                 self.data_init = self.data_iterator.initializer
 
