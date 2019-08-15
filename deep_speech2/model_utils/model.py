@@ -145,11 +145,11 @@ class Model(object):
 
         # Build the portion of the Graph calculating the losses.
         # Note that we will assemble the total_loss using a custom function below.
-        _, key = self.acoustic_model.ctc_loss(
+        _ = self.acoustic_model.ctc_loss(
             features, input_length, label_length, labels, is_train=is_train, loss_key=loss_key)
 
         # Assemble all of the losses for the current tower only.
-        losses = tf.get_collection(key, scope)
+        losses = tf.get_collection(loss_key, scope)
 
         # Calculate the total loss for the current tower.
         total_loss = tf.add_n(losses)
