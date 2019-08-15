@@ -116,7 +116,7 @@ class DeepSpeech2(object):
 
     def inference(self, inputs: tf.Tensor, training: Union[bool, tf.Tensor]):
         # 1. Two CNN layers
-        with tf.variable_scope("cnn", reuse=True):
+        with tf.variable_scope("cnn", reuse=tf.AUTO_REUSE):
             inputs = _conv_bn_layer(
                 inputs, padding=(20, 5), filters=_CONV_FILTERS, kernel_size=(41, 11),
                 strides=(2, 2), layer_id=1, training=training)
@@ -125,13 +125,13 @@ class DeepSpeech2(object):
                 inputs, padding=(10, 5), filters=_CONV_FILTERS, kernel_size=(21, 11),
                 strides=(2, 1), layer_id=2, training=training)
 
-        with tf.variable_scope("reshape", reuse=True):
+        with tf.variable_scope("reshape", reuse=tf.AUTO_REUSE):
             # output of conv_layer2 is of the shape [batch_size (N), times (T), features (F), channels (C)].
             batch_size = tf.shape(inputs)[0]
             feat_size = inputs.get_shape().as_list()[2]
             inputs = tf.reshape(inputs, shape=[batch_size, -1, feat_size * _CONV_FILTERS])
 
-        with tf.variable_scope("rnn", reuse=True):
+        with tf.variable_scope("rnn", reuse=tf.AUTO_REUSE):
             # 2. RNN layers:
             for layer_counter in range(self.num_rnn_layers):
                 is_batch_norm = (layer_counter != 0)  # No batch normalization on the first layer.
@@ -140,7 +140,7 @@ class DeepSpeech2(object):
                     inputs=inputs, rnn_cell=self.rnn_cell, rnn_hidden_size=self.rnn_hidden_size, layer_id=layer_id,
                     is_batch_norm=is_batch_norm, is_bidirectional=self.is_bidirectional, training=training)
 
-        with tf.variable_scope("fc", reuse=True):
+        with tf.variable_scope("fc", reuse=tf.AUTO_REUSE):
             # 3. FC Layer with batch norm
             inputs = batch_norm(inputs, training)
             # shape: [batch_size, max_time, num_classes]
