@@ -69,12 +69,12 @@ class Model(object):
     def _build_graph(self):
         graph = tf.Graph()
         tf.reset_default_graph()
-        with graph.as_default(), tf.device("/CPU:0"):
-            with tf.name_scope("Input"):
+        with graph.as_default():
+            with tf.name_scope("Input"), tf.device("/CPU:0"):
                 self.input_files = tf.placeholder(dtype=tf.string, shape=[None], name="files_path")
                 self.batch_size = tf.placeholder(dtype=tf.int64, shape=None, name="batch_size")  # must be int64
 
-            with tf.name_scope("Read"):
+            with tf.name_scope("Read"), tf.device("/CPU:0"):
                 self.data_iterator = self._build_data(self.input_files, self.batch_size)
                 self.data_init = self.data_iterator.initializer
 
@@ -119,13 +119,13 @@ class Model(object):
 
         features = tf.cast(features, dtype=tf.float32)
         input_length = tf.cast(input_length, dtype=tf.int32)
-        label_length = tf.cast(label_length, dtype=tf.int64)
+        label_length = tf.cast(label_length, dtype=tf.int32)
         labels = tf.cast(labels, dtype=tf.int32)
 
         # check input data tensor's attribute
         utf.tensor.validate_tensor(features, dtype=tf.float32, shape=[None, None, self.n_features, 1])
         utf.tensor.validate_tensor(input_length, dtype=tf.int32, shape=[None, 1])
-        utf.tensor.validate_tensor(label_length, dtype=tf.int64, shape=[None, 1])
+        utf.tensor.validate_tensor(label_length, dtype=tf.int32, shape=[None, 1])
         utf.tensor.validate_tensor(labels, dtype=tf.int32, shape=[None, None])
 
         return features, input_length, label_length, labels
