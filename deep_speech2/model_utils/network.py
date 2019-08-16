@@ -185,7 +185,7 @@ class DeepSpeech2(object):
         losses = tf.nn.ctc_loss(labels=sparse_labels, inputs=y_pred, sequence_length=ctc_input_length)
         return tf.reduce_mean(losses)
 
-    def ctc_loss(self, features, input_length, label_length, labels, is_train: Union[bool, tf.Tensor], loss_key: str):
+    def ctc_loss(self, features, input_length, label_length, labels, is_train: Union[bool, tf.Tensor]):
         """Compute the ctc loss for current batch of predictions by original input"""
         logits = self.inference(inputs=features, training=is_train)
         ctc_input_length = self._compute_length_after_conv(
@@ -193,9 +193,7 @@ class DeepSpeech2(object):
             ctc_time_steps=tf.shape(logits)[1],
             input_length=input_length)
         loss = self._ctc_loss(label_length=label_length, ctc_input_length=ctc_input_length, labels=labels, logits=logits)
-
-        tf.add_to_collection(loss_key, loss)
-        return tf.add_n(inputs=tf.get_collection(key=loss_key))
+        return loss
 
     def decode(self, features: tf.Tensor, input_length: tf.Tensor) -> tf.Tensor:
         """Get the ctc decoded labels"""

@@ -6,6 +6,7 @@ import sys
 import argparse
 import time
 import math
+import re
 import tensorflow as tf
 from deep_speech2.model_utils.model import Model
 from deep_speech2.data_utils.data import DataGenerator
@@ -26,8 +27,12 @@ def get_args(arg_parser: argparse.ArgumentParser,
     :return: a simple dict.
     """
     args = arg_parser.parse_args()
-    argv = [arg.lstrip("--") for arg in input_keys if arg.startswith("--")]  # get the arg keys from command line.
-    given_args = {k: v for k, v in vars(args).items() if k in argv} if argv else {}  # input args from command line.
+
+    # get the arg keys from command line.
+    argv = [re.sub("^--|=.*$", "", arg) for arg in input_keys if arg.startswith("--")]
+
+    # input args from command line.
+    given_args = {k: v for k, v in vars(args).items() if k in argv} if argv else {}
 
     if args.param_file:
         if os.path.exists(args.param_file):
@@ -59,7 +64,8 @@ def get_data_params(args: Dict[str, Any]) -> Dict[str, Any]:
 def get_model_params(args: Dict[str, Any]) -> Dict[str, Any]:
     return dict(
         rnn_hidden_layers=args["rnn_hidden_layers"], rnn_type=args["rnn_type"], is_bidirectional=args["is_bidirectional"],
-        rnn_hidden_size=args["rnn_hidden_size"], fc_use_bias=args["fc_use_bias"], learning_rate=args["learning_rate"])
+        rnn_hidden_size=args["rnn_hidden_size"], fc_use_bias=args["fc_use_bias"], learning_rate=args["learning_rate"],
+        gpu_num=args["gpu_num"])
 
 
 def build_session(graph):
@@ -155,8 +161,7 @@ if __name__ == '__main__':
         n_train_batches = int(math.ceil(len(train_data) / batch_size))
         model.stage_init(sess, [data_path_mapping["train"][0]], batch_size)
         iteration = 0
-        for i in tqdm(range(0, n_train_batches, args["gpu_num"]),
-                      desc="Epoch {}/{} Train Stage".format(epoch + 1, epochs)):
+        for i in tqdm(range(n_train_batches), desc="Epoch {}/{} Train Stage".format(epoch + 1, epochs)):
             try:
                 loss, train_summary = model.train(sess)
                 train_loss += loss
