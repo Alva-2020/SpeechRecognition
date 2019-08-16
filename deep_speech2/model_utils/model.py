@@ -208,7 +208,8 @@ class Model(object):
 
     def eval(self, sess: tf.Session):
         loss, summary, results, labels, label_length =\
-            sess.run([self.loss, self.merge_summary, self.decoded, self.labels, self.label_length],
+            sess.run([self.loss, self.merge_summary, self.decoded,
+                      tf.concat(self.labels, axis=0), tf.concat(self.label_length, axis=0)],
                      feed_dict={self.is_train: False})
         results = [unp.trim(v, -1, "b").tolist() for v in results]  # drop -1 in tails, method from `_utils`
         labels = [label[:length].tolist() for label, length in zip(labels, label_length.reshape(-1,))]
