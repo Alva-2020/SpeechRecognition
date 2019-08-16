@@ -21,7 +21,7 @@ python deep_speech2/main.py \
 --model_dir='/data/zhaochengming/projects/SpeechRecognition/deep_speech2/AM_Model_LOG' \
 --random_seed=0 \
 --epochs=100 \
---batch_size=64 \
+--batch_size=128 \
 --learning_rate=0.0005
 
 
