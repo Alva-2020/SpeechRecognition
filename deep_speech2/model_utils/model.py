@@ -130,8 +130,10 @@ class Model(object):
         utf.tensor.validate_tensor(label_length, dtype=tf.int32, shape=[None, 1])
         utf.tensor.validate_tensor(labels, dtype=tf.int32, shape=[None, None])
 
+        # slice index in case of `batch_size` can't evenly split by `split_num`
+        index = tf.shape(features)[0] - tf.shape(features)[0] % split_num
         features, input_length, label_length, labels =\
-            [tf.split(x, split_num, axis=0) for x in [features, input_length, label_length, labels]]
+            [tf.split(x[: index], split_num, axis=0) for x in [features, input_length, label_length, labels]]
 
         return features, input_length, label_length, labels
 
