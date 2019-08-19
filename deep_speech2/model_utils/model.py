@@ -106,7 +106,7 @@ class Model(object):
                                 tower_decoded.append(decoded)
 
             self.loss = tf.add_n(tf.get_collection("loss"))
-            self.decoded = tf.concat(tower_decoded, axis=0)
+            self.decoded = tower_decoded
 
             grads = self.average_gradients(tower_grads)
             self.train_op = opt.apply_gradients(grads, global_step=global_step)
@@ -207,17 +207,21 @@ class Model(object):
         return loss, summary
 
     def eval(self, sess: tf.Session):
+        # results is a list
         loss, summary, results, labels, label_length =\
             sess.run([self.loss, self.merge_summary, self.decoded,
                       tf.concat(self.labels, axis=0), tf.concat(self.label_length, axis=0)],
                      feed_dict={self.is_train: False})
-        results = [unp.trim(v, -1, "b").tolist() for v in results]  # drop -1 in tails, method from `_utils`
+        # drop -1 in tails, method from `_utils`
+        results = [unp.trim(v, -1, "b").tolist() for part in results for v in part]
         labels = [label[:length].tolist() for label, length in zip(labels, label_length.reshape(-1,))]
         return loss, summary, results, labels
 
     def predict(self, sess: tf.Session):
+        # results is a list
         results = sess.run(self.decoded, feed_dict={self.is_train: False})
-        results = [unp.trim(v, -1, "b").tolist() for v in results]  # drop -1 in tails, method from `_utils`
+        # drop -1 in tails, method from `_utils`
+        results = [unp.trim(v, -1, "b").tolist() for part in results for v in part]
         return results
 
 
