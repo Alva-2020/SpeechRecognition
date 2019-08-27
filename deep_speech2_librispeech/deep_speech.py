@@ -2,15 +2,19 @@
 
 import os
 import tensorflow as tf
+import argparse
 import deep_speech2_librispeech.data.dataset as dataset
 import deep_speech2_librispeech.model.network as deep_speech_model
 import deep_speech2_librispeech.decoder as decoder
 import _utils.tensorflow.misc.distribution_utils as distribution_utils
+from _utils.tensorflow.utils import get_session_config
+from _utils.tensorflow.logs import logger, hooks_helper
+from _utils.tensorflow.app import parser_to_flags
 from typing import List, Dict
 
 
 # Default vocabulary file
-_VOCABULARY_FILE = os.path.join(os.path.dirname(__file__), "data/vocabulary.txt")
+_VOCAB_FILE = os.path.join(os.path.dirname(__file__), "data/vocabulary.txt")
 # Evaluation metrics
 _WER_KEY = "WER"
 _CER_KEY = "CER"
@@ -41,7 +45,7 @@ def evaluate_model(estimator: tf.estimator.Estimator, speech_labels: List[str], 
     CER: Character Error Rate
 
     :param estimator: estimator to evaluate.
-    :param speech_labels: a string specifying all the character in the vocabulary.
+    :param speech_labels: a list of string specifying all the character in the vocabulary.
     :param entries: a list of data entries (audio_file, file_size, transcript) for the given dataset.
     :param input_fn_eval: data input function for evaluation.
 
@@ -145,17 +149,16 @@ def run_deep_speech():
     # Number of label classes. Label string is "[a-z]' -"
     num_classes = len(train_speech_dataset.speech_labels)
 
-    num_gpus = FLAGS.num_gpus
     # not available in 1.4
-    distribution_strategy = distribution_utils.get_distribution_strategy(num_gpus=num_gpus)
-    run_config = tf.estimator.RunConfig(train_distribute=distribution_strategy, session_config=...)
+    distribution_strategy = distribution_utils.get_distribution_strategy(num_gpus=FLAGS.num_gpus)
+    run_config = tf.estimator.RunConfig(train_distribute=distribution_strategy, session_config=get_session_config())
 
     estimator = tf.estimator.Estimator(
         model_fn=model_fn, model_dir=FLAGS.model_dir, config=run_config, params={"num_classes": num_classes})
 
     run_params = {
         "batch_size": FLAGS.batch_size,
-        "epochs": FLAGS.epochs,
+        "train_epochs": FLAGS.train_epochs,
         "rnn_hidden_size": FLAGS.rnn_hidden_size,
         "rnn_hidden_layers": FLAGS.rnn_hidden_layers,
         "rnn_type": FLAGS.rnn_type,
@@ -163,11 +166,81 @@ def run_deep_speech():
         "use_bias": FLAGS.use_bias
     }
 
-    # todo logger implement
-    benchmark_logger = ...
+    benchmark_logger = logger.get_benchmark_logger()
+    benchmark_logger.log_run_info(
+        model_name="deep_speech", dataset_name="LibriSpeech", run_params=run_params, test_id=FLAGS.benchmark_test_id)
+
+    train_hooks = hooks_helper.get_train_hooks(FLAGS.hooks, model_dir=FLAGS.model_dir, batch_size=FLAGS.batch_size)
+    per_replica_batch_size = distribution_utils.per_replica_batch_size(FLAGS.batch_size, FLAGS.num_gpus)
 
     def input_fn_train():
-        return train_speech_dataset.input_fn(batch_size=...)
+        return train_speech_dataset.input_fn(batch_size=per_replica_batch_size)
+
+    def input_fn_eval():
+        return eval_speech_dataset.input_fn(batch_size=per_replica_batch_size)
+
+    # total_training_cycle = FLAGS.train_epochs // FLAGS.epochs_between_evals
+    total_training_cycle = FLAGS.train_epochs
+
+    for cycle_index in range(total_training_cycle):
+        tf.logging.info(f"Starting train cycle: {cycle_index + 1} / {total_training_cycle}")
+
+        # Perform batch_wise dataset shuffling
+        train_speech_dataset.batch_wise_shuffle(FLAGS.batch_size)
+
+        # Train
+        estimator.train(input_fn=input_fn_train, hooks=train_hooks)
+
+        # Evaluation
+        tf.logging.info("Starting to evaluate...")
+        eval_results = evaluate_model(estimator, speech_labels=eval_speech_dataset.speech_labels,
+                                      entries=eval_speech_dataset.entries, input_fn_eval=input_fn_eval)
+
+        # Log the WER and CER results.
+        benchmark_logger.log_evaluation_result(eval_results)
+        tf.logging.info(
+            f"Iteration {cycle_index + 1}: WER = {eval_results[_WER_KEY]:.2f}, CER = {eval_results[_CER_KEY]:.2f}")
+
+
+def main(_):
+    with logger.benchmark_context(FLAGS):
+        run_deep_speech()
+
+
+if __name__ == "__main__":
+    tf.logging.set_verbosity(tf.logging.INFO)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data_dir", type=str, help="The path where labeled data placed.")
+    parser.add_argument("--model_dir", type=str, help="The path where model saved.")
+    parser.add_argument("--sortagrad", type=bool, default=True, help="Whether to sort input audio by length.")
+    parser.add_argument("--sample_rate", type=int, default=16000, help="The sample rate for audio.")
+    parser.add_argument("--window_ms", type=int, default=20, help="The frame length for spectrogram.")
+    parser.add_argument("--stride_ms", type=int, default=10, help="The frame step for spectrogram.")
+    parser.add_argument("--vocab_file", type=str, default=_VOCAB_FILE, help="The path where vocabulary file placed.")
+    parser.add_argument("--rnn_hidden_size", type=int, default=800, help="The hidden size of RNNs.")
+    parser.add_argument("--rnn_hidden_layers", type=int, default=5, help="The num of layers of RNNs.")
+    parser.add_argument("--use_bias", type=bool, default=True, help="Whether use bias at the last fc layer.")
+    parser.add_argument("--is_is_bidirectional", type=bool, default=True, help="Whether rnn unit is bidirectional.")
+    parser.add_argument("--rnn_type", type=str, default="gru", help="The rnn cell type.")
+    parser.add_argument("--learning_rate", type=float, default=5e-4, help="The learning rate.")
+    parser.add_argument("--seed", type=int, default=1, help="The random seed.")
+    parser.add_argument("--batch_size", type=int, default=128, help="The data feed batch size.")
+    parser.add_argument("--train_epochs", type=int, default=10, help="The num of train epochs.")
+    parser.add_argument("--num_gpus", type=int, default=2, help="The num of gpus to use.")
+    parser.add_argument("--hooks", type=str, default="", help="The train hooks.")
+    FLAGS = parser_to_flags(parser)
+
+    tf.app.run(main)
+
+
+
+
+
+
+
+
+
+
 
 
 
