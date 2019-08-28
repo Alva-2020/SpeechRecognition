@@ -42,7 +42,7 @@ def convert_audio_and_split_transcript(trans_file: str):
 def get_info(src: str, start: str) -> Tuple[str, str]:
     rel_path: str = os.path.relpath(src, start).replace("\\", "/")
     info_pair = rel_path.split("/", maxsplit=1)[0]
-    partition, tag = info_pair.split("-")
+    partition, tag, *_ = info_pair.split("-", maxsplit=2)
     return partition, tag
 
 
@@ -60,6 +60,7 @@ if __name__ == '__main__':
         total_collections = list(pool.map(convert_audio_and_split_transcript, tqdm(transcript_files)))
 
     df = pd.DataFrame(data=[data for collection in total_collections for data in collection])
+    print(df.head(10))
     df["partition"], df["tag"] = zip(*df["src"].progress_apply(lambda src: get_info(src, read_path)))
     df.to_csv(output_path, sep="\t", index=False, encoding="utf-8")
     print("Processing Successfully!")
