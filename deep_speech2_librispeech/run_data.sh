@@ -4,7 +4,7 @@ cd /data/zhaochengming/projects/SpeechRecognition
 PYTHONPATH=.:$PYTHONPATH
 
 python deep_speech2_librispeech/data/prepare.py \
---source_path='/data/zhaochengming/data/data_source/Speech/LibriSpeech/data'
+--source_path='/data/zhaochengming/data/data_source/Speech/LibriSpeech/data' \
 --output_path='/data/zhaochengming/data/data_source/Speech/LibriSpeech'
 
 if [ $? -ne 0 ]; then
