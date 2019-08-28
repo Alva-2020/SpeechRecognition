@@ -2,6 +2,7 @@
 
 import os
 import tensorflow as tf
+import tensorflow.estimator as es
 import argparse
 import deep_speech2_librispeech.data.dataset as dataset
 import deep_speech2_librispeech.model.network as deep_speech_model
@@ -37,7 +38,7 @@ def ctc_loss(label_length, ctc_input_length, labels, probs):
     return tf.expand_dims(tf.nn.ctc_loss(labels=sparse_labels, inputs=y_pred, sequence_length=ctc_input_length), axis=1)
 
 
-def evaluate_model(estimator: tf.estimator.Estimator, speech_labels: List[str], entries, input_fn_eval) -> Dict[str, float]:
+def evaluate_model(estimator: es.Estimator, speech_labels: List[str], entries, input_fn_eval) -> Dict[str, float]:
     """
     Evaluate the model performance using WER anc CER as metrics.
 
@@ -100,7 +101,7 @@ def model_fn(features: Dict, labels, mode, params: Dict):
         rnn_hidden_size=FLAGS.rnn_hidden_size, num_classes=num_classes, use_bias=FLAGS.use_bias)
 
     # predict mode
-    if mode == tf.estimator.ModeKeys.PREDICT:
+    if mode == es.ModeKeys.PREDICT:
         logits = model(features, training=False)
         predictions = {
             "logits": logits,
@@ -108,7 +109,7 @@ def model_fn(features: Dict, labels, mode, params: Dict):
             "probabilities": tf.nn.softmax(logits)
         }
 
-        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+        return es.EstimatorSpec(mode=mode, predictions=predictions)
 
     # train / eval mode
     logits = model(features, training=True)
@@ -122,7 +123,7 @@ def model_fn(features: Dict, labels, mode, params: Dict):
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     train_op = tf.group(minimize_op, update_ops)
 
-    return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+    return es.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
 
 def generate_dataset(data_dir: str, partition: str) -> dataset.DeepSpeechDataset:
@@ -151,9 +152,9 @@ def run_deep_speech():
 
     # not available in 1.4
     distribution_strategy = distribution_utils.get_distribution_strategy(num_gpus=FLAGS.num_gpus)
-    run_config = tf.estimator.RunConfig(train_distribute=distribution_strategy, session_config=get_session_config())
+    run_config = es.RunConfig(train_distribute=distribution_strategy, session_config=get_session_config())
 
-    estimator = tf.estimator.Estimator(
+    estimator = es.Estimator(
         model_fn=model_fn, model_dir=FLAGS.model_dir, config=run_config, params={"num_classes": num_classes})
 
     run_params = {
@@ -231,7 +232,6 @@ if __name__ == "__main__":
     FLAGS = parser_to_flags(parser)
 
     tf.app.run(main)
-
 
 
 

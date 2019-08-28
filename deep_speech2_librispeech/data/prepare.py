@@ -40,8 +40,8 @@ def convert_audio_and_split_transcript(trans_file: str):
 
 
 def get_info(src: str, start: str) -> Tuple[str, str]:
-    rel_path = os.path.relpath(src, start).replace("\\", "/")
-    info_pair: str = rel_path.split("/", maxsplit=1)[0]
+    rel_path: str = os.path.relpath(src, start).replace("\\", "/")
+    info_pair = rel_path.split("/", maxsplit=1)[0]
     partition, tag = info_pair.split("-")
     return partition, tag
 
