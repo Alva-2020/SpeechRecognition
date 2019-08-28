@@ -53,7 +53,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     read_path = args.source_path
-    output_path = args.output_path
+    output_file = args.output_path
+    if not os.path.exists(read_path):
+        raise IOError(f"{read_path} not exists.")
+    if os.path.exists(output_file) and not os.path.isfile(output_file):
+        raise IOError(f"{output_file} should be a file.")
 
     transcript_files = glob.glob(os.path.join(read_path, "**/*.trans.txt"), recursive=True)
     with ProcessPoolExecutor(max_workers=8) as pool:
@@ -62,7 +66,7 @@ if __name__ == '__main__':
     df = pd.DataFrame(data=[data for collection in total_collections for data in collection])
     print(df.head(10))
     df["partition"], df["tag"] = zip(*df["src"].progress_apply(lambda src: get_info(src, read_path)))
-    df.to_csv(output_path, sep="\t", index=False, encoding="utf-8")
+    df.to_csv(output_file, sep="\t", index=False, encoding="utf-8")
     print("Processing Successfully!")
 
 
