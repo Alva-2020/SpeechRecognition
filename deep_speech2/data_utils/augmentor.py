@@ -4,7 +4,7 @@ import json
 from deep_speech2.data_utils.utility import read_data
 from deep_speech2.data_utils.segments import AudioSegment, SpeechSegment
 from abc import ABCMeta, abstractmethod
-from typing import Union, Dict, List
+from typing import Union, Dict, List, Type
 
 
 class AugmentorBase(metaclass=ABCMeta):
@@ -188,7 +188,7 @@ class ImpulseResponseAugmentor(AugmentorBase):
         segment.convolve(impulse_segment=impulse_segment, allow_resample=True)
 
 
-_AUGMENT_TYPE_ALIAS = {
+_AUGMENT_TYPE_ALIAS: Dict[str, Type[AugmentorBase]] = {
     "volume": VolumePerturbAugmentor,
     "shift": ShiftPertubAugmentor,
     "speed": SpeedPertubAugmentor,
