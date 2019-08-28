@@ -2,28 +2,25 @@ cd /data/zhaochengming/projects/SpeechRecognition
 
 PYTHONPATH=.:$PYTHONPATH
 
-python deep_speech2/main.py \
---param_file='/data/zhaochengming/projects/SpeechRecognition/deep_speech2/settings.xml' \
---data_file='/data/zhaochengming/data/data_source/Speech/labeled_data.txt' \
---vocab_file='/data/zhaochengming/data/data_source/Speech/vocab.txt' \
---vocab_type='pny' \
---mean_std_file='/data/zhaochengming/data/data_source/Speech/mean_std.npz' \
+python deep_speech2_librispeech/deep_speech.py \
+--data_dir='/data/zhaochengming/data/data_source/Speech/LibriSpeech/total.dat' \
+--model_dir='/data/zhaochengming/projects/SpeechRecognition/deep_speech2_librispeech/logs' \
+--sortagrad=True \
 --sample_rate=16000 \
 --window_ms=20 \
 --stride_ms=10 \
---specgram_type='linear' \
---use_dB_normalization=True \
+--vocab_file='/data/zhaochengming/projects/SpeechRecognition/deep_speech2_librispeech/data/vocabulary.txt' \
 --rnn_hidden_size=800 \
 --rnn_hidden_layers=5 \
---rnn_type='gru' \
+--use_bias=True \
 --is_bidirectional=True \
---fc_use_bias=False \
---model_dir='/data/zhaochengming/projects/SpeechRecognition/deep_speech2/AM_Model_LOG' \
---random_seed=0 \
---epochs=100 \
+--rnn_type='gru' \
+--learning_rate=0.0005 \
+--seed=1 \
 --batch_size=128 \
---learning_rate=0.0005
-
+--train_epochs=10 \
+--num_gpus=2 \
+--hooks=''
 
 if [ $? -ne 0 ]; then
     echo "Failed in training!"
