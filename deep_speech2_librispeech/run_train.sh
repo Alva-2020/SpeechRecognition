@@ -23,6 +23,7 @@ python deep_speech2_librispeech/deep_speech.py \
 --hooks='' \
 --benchmark_test_id='FirstRun'
 
+
 if [ $? -ne 0 ]; then
     echo "Failed in training!"
     exit 1
