@@ -19,7 +19,7 @@ python deep_speech2_librispeech/deep_speech.py \
 --seed=1 \
 --batch_size=128 \
 --train_epochs=10 \
---num_gpus=2 \
+--num_gpus=1 \
 --hooks='' \
 --benchmark_test_id='FirstRun'
 
