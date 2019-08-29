@@ -120,7 +120,7 @@ class DeepSpeechDataset(object):
         shuffled_entries[max_buckets * batch_size:] = self.entries[max_buckets * batch_size:]
         self.entries = shuffled_entries
 
-    def input_fn(self, batch_size: int, repeat: int=1) -> tf.data.Dataset:
+    def input_fn(self, batch_size: int, repeat: int = 1) -> tf.data.Dataset:
         """Input function for model training and evaluation.
 
         :param batch_size: an integer denoting the size of a batch.

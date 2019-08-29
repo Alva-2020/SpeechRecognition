@@ -86,9 +86,9 @@ class DataGenerator(object):
         return len(self._data)
 
     @staticmethod
-    def read_source(data_file: str, data_tag: Optional[str]="labeled_data", partition: str="train",
-                    vocab_type: str="pny", max_duration: float=float("inf"), min_duration: float=0.0) -> np.ndarray:
-        """Read data info from given source file, not process just the data infos."""
+    def read_source(data_file: str, data_tag: Optional[str] = "labeled_data", partition: str = "train",
+                    vocab_type: str = "pny", max_duration: float = float("inf"), min_duration: float = 0.0) -> np.ndarray:
+        """Read data info from given source file, not process just the data info."""
 
         if min_duration < 0:
             raise ValueError("The min duration should be greater than 0.")
@@ -102,7 +102,9 @@ class DataGenerator(object):
 
         # use query with @ external parameter
         # no need add '' for string variables.
-        data = data.query("(@min_duration <= duration <= @max_duration) and (data_type == @partition)")
+        # sort by duration
+        data = data.query("(@min_duration <= duration <= @max_duration) and (data_type == @partition)")\
+            .sort_values("duration")
         if len(data) == 0:
             raise ValueError("The %s data for %s is empty!" % (data_tag, partition))
 
@@ -115,7 +117,7 @@ class DataGenerator(object):
         def _gen_data(element: Tuple):
             src, transcript = element
             specgram, tokens = self.process_utterance(src, transcript, self._sep)
-            true_length = len(specgram)  # original specgram length without padding, needed by calculating ctc loss
+            true_length = len(specgram)  # original spectrum length without padding, needed by calculating ctc loss
             label_length = len(tokens)  # the label length without padding
             features = np.expand_dims(specgram, 2)  # shape: [n_frames, n_features, 1]
             return features, tokens, true_length, label_length
