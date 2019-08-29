@@ -1,6 +1,9 @@
 """Main entry to train and evaluate DeepSpeech model."""
 
 import os
+import warnings
+warnings.filterwarnings(category=FutureWarning, action="ignore")
+
 import tensorflow as tf
 import tensorflow.estimator as es
 import argparse
@@ -229,9 +232,8 @@ if __name__ == "__main__":
     parser.add_argument("--train_epochs", type=int, default=10, help="The num of train epochs.")
     parser.add_argument("--num_gpus", type=int, default=2, help="The num of gpus to use.")
     parser.add_argument("--hooks", type=str, default="", help="The train hooks.")
-    FLAGS = parser_to_flags(parser)
-    print(FLAGS.__dict__["__wrapped"])
 
+    FLAGS = parser.parse_known_args()
     tf.app.run(main)
 
 
