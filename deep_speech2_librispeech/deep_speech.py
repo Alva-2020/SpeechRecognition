@@ -144,7 +144,7 @@ def run_deep_speech():
     """Run deep speech training and eval loop."""
     global FLAGS
     tf.set_random_seed(FLAGS.seed)
-    # Data preprocessing
+    # Data precessing
     tf.logging.info("Data Processing...")
     train_speech_dataset = generate_dataset(FLAGS.data_dir, partition="train")
     eval_speech_dataset = generate_dataset(FLAGS.data_dir, partition="dev")
@@ -231,6 +231,7 @@ if __name__ == "__main__":
     parser.add_argument("--train_epochs", type=int, default=10, help="The num of train epochs.")
     parser.add_argument("--num_gpus", type=int, default=2, help="The num of gpus to use.")
     parser.add_argument("--hooks", type=str, default="", help="The train hooks.")
+    parser.add_argument("--benchmark_test_id", type=str, default="", help="The unique test ID of the benchmark run.")
 
     FLAGS = parser.parse_args()
     print(vars(FLAGS))

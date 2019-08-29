@@ -20,7 +20,8 @@ python deep_speech2_librispeech/deep_speech.py \
 --batch_size=128 \
 --train_epochs=10 \
 --num_gpus=2 \
---hooks=''
+--hooks='' \
+--benchmark_test_id = 'FirstRun'
 
 if [ $? -ne 0 ]; then
     echo "Failed in training!"
