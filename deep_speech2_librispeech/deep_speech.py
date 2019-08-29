@@ -234,6 +234,8 @@ if __name__ == "__main__":
     parser.add_argument("--hooks", type=str, default="", help="The train hooks.")
 
     FLAGS = parser.parse_known_args()
+    print(vars(FLAGS))
+    print("*" * 20)
     tf.app.run(main)
 
 
