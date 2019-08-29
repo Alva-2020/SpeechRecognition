@@ -13,7 +13,6 @@ import deep_speech2_librispeech.decoder as decoder
 import _utils.tensorflow.misc.distribution_utils as distribution_utils
 from _utils.tensorflow.utils import get_session_config
 from _utils.tensorflow.logs import logger, hooks_helper
-from _utils.tensorflow.app import parser_to_flags
 from typing import List, Dict
 
 
@@ -233,21 +232,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_gpus", type=int, default=2, help="The num of gpus to use.")
     parser.add_argument("--hooks", type=str, default="", help="The train hooks.")
 
-    FLAGS = parser.parse_known_args()
+    FLAGS = parser.parse_args()
     print(vars(FLAGS))
     print("*" * 20)
     tf.app.run(main)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
