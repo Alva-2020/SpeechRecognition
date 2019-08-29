@@ -21,7 +21,7 @@ python deep_speech2_librispeech/deep_speech.py \
 --train_epochs=10 \
 --num_gpus=2 \
 --hooks='' \
---benchmark_test_id = 'FirstRun'
+--benchmark_test_id='FirstRun'
 
 if [ $? -ne 0 ]; then
     echo "Failed in training!"
