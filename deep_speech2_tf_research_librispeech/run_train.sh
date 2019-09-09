@@ -2,14 +2,14 @@ cd /data/zhaochengming/projects/SpeechRecognition
 
 PYTHONPATH=.:$PYTHONPATH
 
-python deep_speech2_librispeech/deep_speech.py \
+python deep_speech2_tf_research_librispeech/deep_speech.py \
 --data_dir='/data/zhaochengming/data/data_source/Speech/LibriSpeech/total.dat' \
---model_dir='/data/zhaochengming/projects/SpeechRecognition/deep_speech2_librispeech/logs' \
+--model_dir='/data/zhaochengming/projects/SpeechRecognition/deep_speech2_tf_research_librispeech/logs' \
 --sortagrad=True \
 --sample_rate=16000 \
 --window_ms=20 \
 --stride_ms=10 \
---vocab_file='/data/zhaochengming/projects/SpeechRecognition/deep_speech2_librispeech/data/vocabulary.txt' \
+--vocab_file='/data/zhaochengming/projects/SpeechRecognition/deep_speech2_tf_research_librispeech/data/vocabulary.txt' \
 --rnn_hidden_size=800 \
 --rnn_hidden_layers=5 \
 --use_bias=True \

@@ -7,9 +7,9 @@ warnings.filterwarnings(category=FutureWarning, action="ignore")
 import tensorflow as tf
 import tensorflow.estimator as es
 import argparse
-import deep_speech2_librispeech.data.dataset as dataset
-import deep_speech2_librispeech.model.network as deep_speech_model
-import deep_speech2_librispeech.decoder as decoder
+import deep_speech2_tf_research_librispeech.data.dataset as dataset
+import deep_speech2_tf_research_librispeech.model.network as deep_speech_model
+import deep_speech2_tf_research_librispeech.decoder as decoder
 import _utils.tensorflow.misc.distribution_utils as distribution_utils
 from _utils.tensorflow.utils import get_session_config
 from _utils.tensorflow.logs import logger, hooks_helper
