@@ -99,7 +99,7 @@ if __name__ == '__main__':
     parser.add_argument("--is_normalize", type=bool, default=True, help="whether normalize the audio feature.")
     parser.add_argument("--rnn_hidden_size", type=int, default=800, help="The hidden size of RNNs.")
     parser.add_argument("--rnn_hidden_layers", type=int, default=5, help="The num of layers of RNNs.")
-    parser.add_argument("--use_bias", type=bool, default=True, help="Whether use bias at the last fc layer.")
+    parser.add_argument("--fc_use_bias", type=bool, default=True, help="Whether use bias at the last fc layer.")
     parser.add_argument("--is_bidirectional", type=bool, default=True, help="Whether rnn unit is bidirectional.")
     parser.add_argument("--rnn_type", type=str, default="gru", help="The rnn cell type.")
     parser.add_argument("--learning_rate", type=float, default=5e-4, help="The learning rate.")
