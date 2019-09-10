@@ -2,7 +2,7 @@ cd /data/zhaochengming/projects/SpeechRecognition
 
 PYTHONPATH=.:$PYTHONPATH
 
-python deep_speech2/main.py \
+python deep_speech2_udf_librispeech/main.py \
 --param_file='/data/zhaochengming/projects/SpeechRecognition/deep_speech2_udf_librispeech/settings.xml' \
 --data_file='/data/zhaochengming/data/data_source/Speech/LibriSpeech/total.dat' \
 --vocab_file='/data/zhaochengming/projects/SpeechRecognition/deep_speech2_udf_librispeech/data/vocabulary.txt' \
