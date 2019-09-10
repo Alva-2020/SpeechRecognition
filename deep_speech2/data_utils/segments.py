@@ -244,7 +244,7 @@ class AudioSegment(object):
         new_indices = np.linspace(start=0, stop=old_length, num=new_length)
         self.samples = np.interp(x=new_indices, xp=old_indices, fp=self.samples)
 
-    def normalize(self, target_db: float=-20., max_gain_db: float=300.) -> None:
+    def normalize(self, target_db: float = -20., max_gain_db: float = 300.) -> None:
         """
         Normalize audio to be of the desired RMS value in decibels.
         Note that this is an in-place transformation.

@@ -113,6 +113,7 @@ class DeepSpeech2(object):
         self.rnn_hidden_size = rnn_hidden_size
         self.num_classes = num_classes
         self.fc_use_bias = fc_use_bias
+        self.decode_pad_value = -1
 
     def inference(self, inputs: tf.Tensor, training: Union[bool, tf.Tensor]):
         # 1. Two CNN layers
@@ -206,6 +207,9 @@ class DeepSpeech2(object):
         decode_, _ = tf.nn.ctc_greedy_decoder(
             inputs=tf.transpose(logits, perm=[1, 0, 2]), sequence_length=ctc_input_length,
             merge_repeated=True)
-        return tf.sparse_tensor_to_dense(decode_[0], default_value=-1)  # -1 indicates the end of result
+
+        # -1 indicates the end of result
+        return tf.sparse_tensor_to_dense(decode_[0], default_value=self.decode_pad_value)
+
 
 

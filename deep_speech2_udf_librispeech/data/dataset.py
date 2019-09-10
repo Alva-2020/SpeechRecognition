@@ -5,7 +5,6 @@ import os
 import numpy as np
 import pandas as pd
 import soundfile as sf
-import tensorflow as tf
 import deep_speech2_udf_librispeech.data.featurizer as featurizer
 from typing import List
 
@@ -13,7 +12,7 @@ from typing import List
 class AudioConfig(object):
     """Configs for spectrogram extraction from audio."""
 
-    def __init__(self, sample_rate: int, window_ms: int, stride_ms: int, normalize: bool=False):
+    def __init__(self, sample_rate: int, window_ms: int, stride_ms: int, normalize: bool = False):
         """Initialize the AudioConfig class.
 
         :param sample_rate: an integer denoting the sample rate of the input waveform.
@@ -58,9 +57,12 @@ class DatasetConfig(object):
 class DeepSpeechDataset(object):
     """Dataset class for training/evaluation of DeepSpeech model."""
 
-    def __init__(self, dataset_config: DatasetConfig, partition: str, seed: int):
+    def __init__(self, dataset_config: DatasetConfig, partition: str, batch_size: int,
+                 seed: int, label_padding_value: int):
         self.config = dataset_config
         self.partition = partition
+        self.batch_size = batch_size
+        self.label_padding_value = label_padding_value
         self.audio_featurizer = featurizer.AudioFeaturizer(
             sample_rate=self.config.audio_config.sample_rate,
             window_ms=self.config.audio_config.window_ms,
@@ -72,6 +74,7 @@ class DeepSpeechDataset(object):
         self.entries = self._read_data(self.config.data_path, partition, sortagrad=self.config.sortagrad)
         self.rng = random.Random(seed)
         self.n_features = self.audio_featurizer.n_features  # 161 by default
+        self.num_classes = self.text_featurizer.num_classes  # 29 by default
 
     @staticmethod
     def _read_data(file_path: str, partition: str, sortagrad: bool) -> np.ndarray:
@@ -93,16 +96,38 @@ class DeepSpeechDataset(object):
             data.sort_values("duration", inplace=True)
         return data[["src", "transcript"]].values
 
-    def batch_wise_shuffle(self, batch_size: int) -> None:
+    def __len__(self):
+        return len(self.entries) // self.batch_size
+
+    def __getitem__(self, index: int):
+        batch_features, batch_labels = [], []
+        for audio_file, transcript in self.entries[index * self.batch_size: (index + 1) * self.batch_size]:
+            samples, _ = sf.read(audio_file)
+            features = self.audio_featurizer.transform(samples)
+            labels = self.text_featurizer.transform(transcript)
+            batch_features.append(features)
+            batch_labels.append(labels)
+
+            batch_features, batch_input_length = self._wav_padding(batch_features)
+            batch_labels, batch_label_length = self._label_padding(batch_labels, self.label_padding_value)
+            return {
+                "features": batch_features,
+                "labels": batch_labels,
+                "input_length": batch_input_length,
+                "label_length": batch_label_length
+            }
+
+    def batch_wise_shuffle(self) -> None:
         """Shuffled by batch instead of by element"""
         shuffled_entries = np.empty_like(self.entries)
-        max_buckets = len(self.entries) // batch_size
+        max_buckets = len(self.entries) // self.batch_size
         ids = list(range(max_buckets))
         self.rng.shuffle(ids)
         for i, index in enumerate(ids):
-            shuffled_entries[i * batch_size: (i + 1) * batch_size] = self.entries[i * batch_size: (i + 1) * batch_size]
+            shuffled_entries[i * self.batch_size: (i + 1) * self.batch_size] =\
+                self.entries[i * self.batch_size: (i + 1) * self.batch_size]
 
-        shuffled_entries[max_buckets * batch_size:] = self.entries[max_buckets * batch_size:]
+        shuffled_entries[max_buckets * self.batch_size:] = self.entries[max_buckets * self.batch_size:]
         self.entries = shuffled_entries
 
     @staticmethod
@@ -110,35 +135,16 @@ class DeepSpeechDataset(object):
         n_features = wav_data_list[0].shape[1]
         wav_lens = np.array([len(data) for data in wav_data_list])
         wav_max_len = max(wav_lens)
-        new_wav_data_list = np.zeros(shape=(len(wav_data_list), wav_max_len, n_features))  # padding完毕的容器
+        new_wav_data_list = np.zeros(shape=(len(wav_data_list), wav_max_len, n_features, 1))  # padding完毕的容器
         for i, wav_data in enumerate(wav_data_list):
-            new_wav_data_list[i, :len(wav_data), :] = wav_data  # 塞入数据
-        return new_wav_data_list[..., np.newaxis], wav_lens
+            new_wav_data_list[i, :len(wav_data), :, :] = wav_data  # 塞入数据
+        return new_wav_data_list, wav_lens
 
     @staticmethod
-    def _label_padding(label_data_list):
+    def _label_padding(label_data_list, label_padding_value: int):
         label_lens = np.array([len(label) for label in label_data_list])
         max_label_len = max(label_lens)
-        new_label_data_list = np.zeros(shape=(len(label_data_list), max_label_len))
+        new_label_data_list = np.ones(shape=(len(label_data_list), max_label_len)) * label_padding_value
         for i, label_data in enumerate(label_data_list):
             new_label_data_list[i, :len(label_data)] = label_data
         return new_label_data_list, label_lens
-
-
-    def batch(self, batch_size: int):
-        batch_features, batch_labels = [], []
-        n = 0
-        for audio_file, transcript in self.entries:
-            samples, _ = sf.read(audio_file)
-            features = self.audio_featurizer.transform(samples)
-            labels = self.text_featurizer.transform(transcript)
-
-            batch_features.append(features)
-            batch_labels.append(labels)
-            n += 1
-            if n == batch_size:
-                batch_features =
-
-
-
-

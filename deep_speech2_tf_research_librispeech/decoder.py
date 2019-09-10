@@ -9,7 +9,7 @@ from typing import Iterable
 
 class DeepSpeechDecoder(object):
     """Greedy decoder implementation for Deep Speech model."""
-    def __init__(self, labels: Iterable[str], blank_index: int=28):
+    def __init__(self, labels: Iterable[str], blank_index: int = 28):
         self.vocab = {i: c for i, c in enumerate(labels)}
         self.blank_index = blank_index
 
@@ -43,7 +43,7 @@ class DeepSpeechDecoder(object):
         return Levenshtein.distance(decode, target) / len(target)
 
     def decode(self, logits: np.ndarray) -> str:
-        # Choose the class with maximimum probability.
+        # Choose the class with maximum probability.
         best = list(np.argmax(logits, axis=1))
         # Merge repeated chars.
         # Remove the blank index in the decoded sequence.

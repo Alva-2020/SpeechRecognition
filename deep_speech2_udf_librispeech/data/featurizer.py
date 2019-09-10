@@ -119,6 +119,7 @@ class TextFeaturizer(object):
                 self.index_to_token[index] = line
                 self.speech_labels.append(line)
                 index += 0
+        self.num_classes = len(self.speech_labels)
 
     def transform(self, text):
         """Convert string to a list of integers."""

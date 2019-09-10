@@ -8,9 +8,8 @@ Based on model without placeholders which are replaced by `dataset` api
 import re
 import numpy as np
 import tensorflow as tf
-import _utils.numpy as unp
-import _utils.tensorflow as utf
-from deep_speech2.model_utils.network import DeepSpeech2
+import _utils.unumpy as unp
+from deep_speech2_udf_librispeech.model_utils.network import DeepSpeech2
 from typing import Union, List, Dict, Tuple
 
 
@@ -19,7 +18,7 @@ class Model(object):
 
     def __init__(self, num_classes: int, n_features: int, rnn_hidden_layers: int, rnn_type: str,
                  is_bidirectional: bool, rnn_hidden_size: int, fc_use_bias: bool, learning_rate: float,
-                 feature_descriptions: Dict[str, Union[tf.FixedLenFeature, tf.VarLenFeature]], gpu_num: int = 1):
+                 gpu_num: int = 1):
 
         self.acoustic_model = DeepSpeech2(
             num_rnn_layers=rnn_hidden_layers, rnn_type=rnn_type, is_bidirectional=is_bidirectional,
@@ -28,7 +27,6 @@ class Model(object):
         self.n_features = n_features
         self.lr = learning_rate
         self.gpu_num = gpu_num
-        self.data_reader: utf.record.RecordReader = utf.record.RecordReader(feature_descriptions)
         self.graph = self._build_graph()
 
     @property
@@ -47,40 +45,20 @@ class Model(object):
         self.saver.restore(sess, ckpt_path)
         print("Loading model successfully!")
 
-    def _build_data(self, input_files: tf.Tensor, batch_size: tf.Tensor) -> tf.data.Iterator:
-        print(self.data_reader.feature_description)
-        data = self.data_reader.read(input_files)
-        data = data.shuffle(buffer_size=100)
-        data = data.prefetch(buffer_size=1000)
-        data = data.padded_batch(
-            batch_size=batch_size,
-            padded_shapes={
-                "features": [None, self.n_features, 1],
-                "labels": [None],
-                "true_length": [1],
-                "label_length": [1]},
-            padding_values={
-                "features": np.float32(0),
-                "labels": np.int64(self.num_classes - 1),  # padded with blank index
-                "true_length": np.int64(0),
-                "label_length": np.int64(0)})
-        iterator = data.make_initializable_iterator()
-        return iterator
-
     def _build_graph(self):
         graph = tf.Graph()
         tf.reset_default_graph()
         with graph.as_default(), tf.device("/CPU:0"):
             with tf.name_scope("Input"):
-                self.input_files = tf.placeholder(dtype=tf.string, shape=[None], name="files_path")
-                self.batch_size = tf.placeholder(dtype=tf.int64, shape=None, name="batch_size")  # must be int64
+                self.features = tf.placeholder(dtype=tf.float32, shape=[None, None, self.n_features, 1], name="features")
+                self.labels = tf.placeholder(dtype=tf.int32, shape=[None, None], name="labels")
+                self.input_length = tf.placeholder(dtype=tf.int32, shape=[None, 1], name="input_length")
+                self.label_length = tf.placeholder(dtype=tf.int32, shape=[None, 1], name="label_length")
                 self.is_train = tf.placeholder(dtype=tf.bool, shape=None, name="train_phase")
 
-            with tf.name_scope("Read"):
-                self.data_iterator = self._build_data(self.input_files, self.batch_size)
-                self.data_init = self.data_iterator.initializer
-                self.features, self.input_length, self.label_length, self.labels =\
-                    self.read_input(self.data_iterator.get_next(), split_num=self.gpu_num)
+                split_features, split_labels, split_input_length, split_label_length =\
+                    [tf.split(x, self.gpu_num, axis=0)
+                     for x in [self.features, self.labels, self.input_length, self.label_length]]
 
             with tf.name_scope("train"):
                 global_step = tf.get_variable("global_step", shape=[], initializer=tf.constant_initializer(0), trainable=False)
@@ -94,7 +72,7 @@ class Model(object):
                     with tf.device("/GPU:%d" % i):
                         with tf.name_scope("{tower_name}_{id}".format(tower_name=self.TOWER_NAME, id=i)) as scope:
                             features, input_length, label_length, labels =\
-                                [x[i] for x in [self.features, self.input_length, self.label_length, self.labels]]
+                                [x[i] for x in [split_features, split_input_length, split_label_length, split_labels]]
                             loss = self.tower_loss(
                                 scope, features, input_length, label_length, labels,
                                 is_train=self.is_train, loss_key="loss")
@@ -115,29 +93,7 @@ class Model(object):
             self.merge_summary = tf.summary.merge(tf.get_collection(tf.GraphKeys.SUMMARIES))
         return graph
 
-    def read_input(self, input_iter, split_num: int):
-        features, input_length, label_length, labels = \
-            [input_iter[key] for key in ["features", "true_length", "label_length", "labels"]]
-
-        features = tf.cast(features, dtype=tf.float32)
-        input_length = tf.cast(input_length, dtype=tf.int32)
-        label_length = tf.cast(label_length, dtype=tf.int32)
-        labels = tf.cast(labels, dtype=tf.int32)
-
-        # check input data tensor's attribute
-        utf.tensor.validate_tensor(features, dtype=tf.float32, shape=[None, None, self.n_features, 1])
-        utf.tensor.validate_tensor(input_length, dtype=tf.int32, shape=[None, 1])
-        utf.tensor.validate_tensor(label_length, dtype=tf.int32, shape=[None, 1])
-        utf.tensor.validate_tensor(labels, dtype=tf.int32, shape=[None, None])
-
-        # slice index in case of `batch_size` can't evenly split by `split_num`
-        index = tf.shape(features)[0] - tf.shape(features)[0] % split_num
-        features, input_length, label_length, labels =\
-            [tf.split(x[: index], split_num, axis=0) for x in [features, input_length, label_length, labels]]
-
-        return features, input_length, label_length, labels
-
-    def tower_loss(self, scope: str, features, input_length, label_length, labels, is_train, loss_key: str="train_loss"):
+    def tower_loss(self, scope: str, features, input_length, label_length, labels, is_train, loss_key: str = "train_loss"):
         """
         Calculate the total loss on a single tower running the CIFAR model.
 
@@ -199,31 +155,45 @@ class Model(object):
             average_grads.append((grad, v))
         return average_grads
 
-    def stage_init(self, sess: tf.Session, input_files: List[str], batch_size: int):
-        sess.run(
-            self.data_init,
-            feed_dict={self.input_files: input_files, self.batch_size: batch_size})
-
-    def train(self, sess: tf.Session):
-        loss, _, summary = sess.run([self.loss, self.train_op, self.merge_summary], feed_dict={self.is_train: True})
+    def train(self, sess: tf.Session, feed: Dict[str, np.ndarray]):
+        feed_dict = {
+            self.features: feed["features"],
+            self.labels: feed["labels"],
+            self.input_length: feed["input_length"],
+            self.label_length: feed["label_length"],
+            self.is_train: True
+        }
+        loss, _, summary = sess.run([self.loss, self.train_op, self.merge_summary], feed_dict=feed_dict)
         return loss, summary
 
-    def eval(self, sess: tf.Session):
+    def eval(self, sess: tf.Session, feed: Dict[str, np.ndarray]):
+        feed_dict = {
+            self.features: feed["features"],
+            self.labels: feed["labels"],
+            self.input_length: feed["input_length"],
+            self.label_length: feed["label_length"],
+            self.is_train: False
+        }
         # results is a list
-        loss, summary, results, labels, label_length =\
+        loss, summary, tower_results, labels, label_length =\
             sess.run([self.loss, self.merge_summary, self.decoded,
                       tf.concat(self.labels, axis=0), tf.concat(self.label_length, axis=0)],
-                     feed_dict={self.is_train: False})
+                     feed_dict=feed_dict)
         # drop -1 in tails, method from `_utils`
-        results = [unp.trim(v, -1, "b").tolist() for part in results for v in part]
+        results: List[List[int]] = [unp.trim(v, -1, "b").tolist() for part in tower_results for v in part]
         labels = [label[:length].tolist() for label, length in zip(labels, label_length.reshape(-1,))]
         return loss, summary, results, labels
 
-    def predict(self, sess: tf.Session):
+    def predict(self, sess: tf.Session, feed: Dict[str, np.ndarray]):
+        feed_dict = {
+            self.features: feed["features"],
+            self.input_length: feed["input_length"],
+            self.is_train: False
+        }
         # results is a list
-        results = sess.run(self.decoded, feed_dict={self.is_train: False})
+        results = sess.run(self.decoded, feed_dict=feed_dict)
         # drop -1 in tails, method from `_utils`
-        results = [unp.trim(v, -1, "b").tolist() for part in results for v in part]
+        results = [unp.trim(v, self.acoustic_model.decode_pad_value, "b").tolist() for part in results for v in part]
         return results
 
 
