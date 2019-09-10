@@ -126,7 +126,6 @@ if __name__ == '__main__':
     train_data = dataset.DeepSpeechDataset(partition="train", label_padding_value=BLANK_INDEX, **data_params)
     eval_data = dataset.DeepSpeechDataset(partition="dev", label_padding_value=BLANK_INDEX, **data_params)
 
-    feature_descriptions = generate_feature_desc(os.path.join(model_dir, "train_data.xml"))
     model = Model(num_classes=train_data.num_classes, n_features=train_data.n_features, **model_params)
     sess = build_session(model.graph)
 
