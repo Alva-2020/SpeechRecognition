@@ -12,8 +12,8 @@ from deep_speech2.model_utils.model import Model
 from deep_speech2.data_utils.data import DataGenerator
 from deep_speech2.tools.metrics import EditDistance
 from _utils.confighandler import ConfigHandler
-from _utils.tensorflow.utils import get_ckpt_global_step
-from _utils.tensorflow.record import generate_feature_desc
+from _utils.utensorflow.utils import get_ckpt_global_step
+from _utils.utensorflow.record import generate_feature_desc
 from typing import List, Dict, Any
 from tqdm import tqdm
 

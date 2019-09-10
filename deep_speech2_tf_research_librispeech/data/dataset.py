@@ -7,7 +7,6 @@ import pandas as pd
 import soundfile as sf
 import tensorflow as tf
 import deep_speech2_tf_research_librispeech.data.featurizer as featurizer
-from typing import List
 
 
 class AudioConfig(object):

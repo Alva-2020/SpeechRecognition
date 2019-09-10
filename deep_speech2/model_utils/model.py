@@ -8,8 +8,8 @@ Based on model without placeholders which are replaced by `dataset` api
 import re
 import numpy as np
 import tensorflow as tf
-import _utils.numpy as unp
-import _utils.tensorflow as utf
+import _utils.unumpy as unp
+import _utils.utensorflow as utf
 from deep_speech2.model_utils.network import DeepSpeech2
 from typing import Union, List, Dict, Tuple
 

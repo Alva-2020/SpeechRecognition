@@ -3,7 +3,6 @@ Calculate wer and cer
 """
 
 import Levenshtein
-import numpy as np
 from typing import List, Union, Iterable
 
 
