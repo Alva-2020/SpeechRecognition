@@ -113,8 +113,8 @@ class DeepSpeechDataset(object):
             return {
                 "features": batch_features,
                 "labels": batch_labels,
-                "input_length": batch_input_length,
-                "label_length": batch_label_length
+                "input_length": batch_input_length.reshape(-1, 1),
+                "label_length": batch_label_length.reshape(-1, 1)
             }
 
     def batch_wise_shuffle(self) -> None:
