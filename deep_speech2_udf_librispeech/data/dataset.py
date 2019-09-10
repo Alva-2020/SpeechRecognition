@@ -108,14 +108,14 @@ class DeepSpeechDataset(object):
             batch_features.append(features)
             batch_labels.append(labels)
 
-            batch_features, batch_input_length = self._wav_padding(batch_features)
-            batch_labels, batch_label_length = self._label_padding(batch_labels, self.label_padding_value)
-            return {
-                "features": batch_features,
-                "labels": batch_labels,
-                "input_length": batch_input_length.reshape(-1, 1),
-                "label_length": batch_label_length.reshape(-1, 1)
-            }
+        batch_features, batch_input_length = self._wav_padding(batch_features)
+        batch_labels, batch_label_length = self._label_padding(batch_labels, self.label_padding_value)
+        return {
+            "features": batch_features,
+            "labels": batch_labels,
+            "input_length": batch_input_length.reshape(-1, 1),
+            "label_length": batch_label_length.reshape(-1, 1)
+        }
 
     def batch_wise_shuffle(self) -> None:
         """Shuffled by batch instead of by element"""
