@@ -27,6 +27,7 @@ class DFCNN(object):
     def conv2d(size):
         return Conv2D(filters=size, kernel_size=(3, 3), use_bias=True, activation="relu", padding="same",
                       kernel_initializer="he_normal")
+
     @staticmethod
     def norm(x):
         return BatchNormalization(axis=-1)(x)
