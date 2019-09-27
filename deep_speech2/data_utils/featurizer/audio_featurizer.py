@@ -132,8 +132,8 @@ class AudioFeaturizer(object):
         freqs = float(sample_rate) / window_size * np.arange(fft.shape[0])
         return fft, freqs
 
-    def _compute_linear_specgram(self, samples: np.ndarray, sample_rate: int, stride_ms: float=10.,
-                                 window_ms: float=20., max_freq: Optional[float]=None, eps: float=1e-14) -> np.ndarray:
+    def _compute_linear_specgram(self, samples: np.ndarray, sample_rate: int, stride_ms: float = 10.,
+                                 window_ms: float = 20., max_freq: Optional[float] = None, eps: float = 1e-14) -> np.ndarray:
         """Compute the linear spectrogram from FFT energy."""
         if max_freq is not None and max_freq > sample_rate / 2:
             raise ValueError("max freq must not be greater than half of sample rate e.g.(<= %f)" % (sample_rate / 2))

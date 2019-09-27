@@ -72,7 +72,7 @@ def _normalize_audio_feature(audio_feature: np.ndarray):
 class AudioFeaturizer(object):
     """Class to extract spectrogram features from the audio input."""
 
-    def __init__(self, sample_rate: int=16000, window_ms: int=20, stride_ms: int=10, normalize: bool=True):
+    def __init__(self, sample_rate: int = 16000, window_ms: int = 20, stride_ms: int = 10, normalize: bool = True):
         """Initialize the audio featurizer class according to the configs.
 
         :param sample_rate: an integer specifying the sample rate of the input waveform.

@@ -9,7 +9,7 @@ import platform
 import argparse
 from collections import namedtuple
 from pypinyin import slug, Style
-from _utils.nlp.u_nlp import DBC2SBC
+from _utils.nlp import DBC2SBC
 from typing import Optional, Dict, Tuple
 
 system = platform.system().lower()

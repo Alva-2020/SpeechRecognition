@@ -10,14 +10,14 @@ from typing import Optional, List, Dict, Tuple
 
 
 # mfcc 特征
-def compute_mfcc(file, n_features: int=26):
+def compute_mfcc(file, n_features: int = 26):
     sample_rate, audio = wavfile.read(file)
     mfcc_feat = mfcc(signal=audio, samplerate=sample_rate, numcep=n_features)  # shape: [n_frames, numcep]
     return mfcc_feat  # shape: [n_frames, numcep]
 
 
 # 时频图
-def compute_fbank(file, time_window=400, time_step: int = 10):
+def compute_fbank(file, time_window: int = 400, time_step: int = 10):
     w = np.hamming(time_window)
     fs, wav_arr = wavfile.read(file)
     #    range0_end = int(len(wav_arr) / fs * 1000) // time_step + 1 # 计算循环终止的位置，也就是最终生成的窗数
