@@ -19,7 +19,7 @@ _TAG_NAMES = list(_TAG_ALIAS.keys())
 
 def read_data(data_file: str, data_tag: Optional[str]=None, to_dict: bool=False) -> Union[pd.DataFrame, List[Dict]]:
     """
-    Read saved data from `prepare.py`
+    Read saved data from `data_prepare.py`
     :param data_file: String, the src path to file
     :param data_tag: String, the type of data to load. When not specified, this will expect data to have columns.
     :param to_dict: bool, whether output as a List[dict]

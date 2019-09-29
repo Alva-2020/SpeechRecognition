@@ -12,7 +12,7 @@ import deep_speech2_tf_research_librispeech.data.featurizer as featurizer
 class AudioConfig(object):
     """Configs for spectrogram extraction from audio."""
 
-    def __init__(self, sample_rate: int, window_ms: int, stride_ms: int, normalize: bool=False):
+    def __init__(self, sample_rate: int, window_ms: int, stride_ms: int, normalize: bool = False):
         """Initialize the AudioConfig class.
 
         :param sample_rate: an integer denoting the sample rate of the input waveform.

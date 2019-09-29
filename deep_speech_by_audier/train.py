@@ -1,18 +1,12 @@
 
 import os
-import sys
-import numpy as np
-import platform
-system = platform.system().lower()
-sys.path.append("F:/Code projects/Python/SpeechRecognition" if system == "windows"
-                else "/data/zhaochengming/projects/SpeechRecognition")
 from tensorflow.python.keras.callbacks import ModelCheckpoint, TensorBoard
 from tensorflow.python.keras import backend as K
 from deep_speech_by_audier.constant import make_pny_vocab, DATA_SOURCE_DIR, AM_LOG_DIR, AM_MODEL_DIR
 from deep_speech_by_audier.input_data import DataGenerator
 from deep_speech_by_audier.model.speech import AcousticModel
 from deep_speech_by_audier.model.utils import get_session
-from _utils.tf.util import get_board_log_path
+from _utils.utensorflow import get_board_log_path
 from typing import Dict
 import tensorflow as tf
 

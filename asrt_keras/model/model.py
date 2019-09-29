@@ -24,7 +24,7 @@ class _Model:
         h = self.cnn_cell(128, (0.15, 0.15), True, h)
         h = self.cnn_cell(128, (0.2, 0.2), False, h)
         h = self.cnn_cell(128, (0.2, 0), False, h)
-        h = Reshape((-1, self.n_features // 8 * 128))(h)
+        h = Reshape((-1, self.n_features // 8 * 128))(h)  # Flatten
         h = self.dropout(0.3)(h)
         h = self.dense(128)(h)
         h = self.dropout(0.3)(h)
@@ -56,6 +56,10 @@ class _Model:
         x = self.dropout(drop_rates[1])(x)
         return x
 
+    @staticmethod
+    def get_decode_input_length(x):
+        return K.shape(x)[1] // 8
+
 
 class AcousticModel(object):
     def __init__(self, vocab_size: int, n_features: int, gpu_num: int = 1, learning_rate: float = 1e-3,
@@ -81,10 +85,11 @@ class AcousticModel(object):
         self.labels = Input(shape=[None], dtype="int32", name=MODELKEYS.LABELS)
         self.input_length = Input(shape=[1], dtype="int32", name=MODELKEYS.INPUT_LENGTH)
         self.label_length = Input(shape=[1], dtype="int32", name=MODELKEYS.LABEL_LENGTH)
+
+        self.ctc_input_length = Lambda(function=self.get_ctc_input_length, name="ctc_input_length")(self.input_length)
         self.loss = Lambda(function=self.ctc_loss, name="ctc_loss")\
-            ([self.labels, self.y_pred, self.input_length, self.label_length])  # function 只接受一个占位输入
-        self.ctc_model = Model(inputs=[self.inputs, self.labels, self.input_length, self.label_length],
-                               outputs=self.loss)
+            ([self.labels, self.y_pred, self.ctc_input_length, self.label_length])  # function 只接受一个占位输入
+        self.ctc_model = Model(inputs=[self.inputs, self.labels, self.label_length], outputs=self.loss)
         if self.gpu_num > 1:
             self.train_model = multi_gpu_model(model=self.ctc_model, gpus=self.gpu_num)
         else:
@@ -98,30 +103,35 @@ class AcousticModel(object):
         )
 
     @staticmethod
+    def get_ctc_input_length(x):
+        return x // 8
+
+    @staticmethod
     def ctc_loss(inputs):
-        labels, y_pred, input_length, label_length = inputs
+        labels, y_pred, ctc_input_length, label_length = inputs
         y_pred = y_pred[:, :, :]
-        cost = K.ctc_batch_cost(y_true=labels, y_pred=y_pred, input_length=input_length, label_length=label_length)
+        cost = K.ctc_batch_cost(y_true=labels, y_pred=y_pred, input_length=ctc_input_length, label_length=label_length)
         return K.mean(cost)
 
-    def predict(self, inputs: np.ndarray, input_lengh: int):
+    def predict(self, inputs: np.ndarray, input_length: int):
         """Predict on a single speech sample
         :param inputs: The audio samples, require of shape [?, n_features, 1]
-        :param input_lengh: The time frames of samples before decode. For dfcnn model, it's true_length // 8
+        :param input_length: The time frames of samples before decode.
         :return: List of ids of labels.
         """
         if inputs.ndim != 3 or inputs.shape[-1] != 1 or inputs.shape[-2] != self.n_features:
             raise TypeError(f"Require inputs to be of shape [?, {self.n_features}, 1], got {inputs.shape}.")
-        if not isinstance(input_lengh, int):
-            raise TypeError(f"Require input length to be a int scalar, got {type(input_lengh)}.")
+        if not isinstance(input_length, int):
+            raise TypeError(f"Require input length to be a int scalar, got {type(input_length)}.")
+
         inputs = [inputs]  # batch_size = 1
-        input_length = [input_lengh]
+        input_length = [self.get_ctc_input_length(input_length)]
         base_pred = self.inference_model.predict(inputs)[:, :, :]
         r = K.ctc_decode(base_pred, input_length=input_length, greedy=True, beam_width=100, top_paths=1)
         encoded_ids = K.get_value(r[0][0])[0]
         return encoded_ids
 
-    def train(self, train_data: Sequence, test_data: Sequence, callbacks=None) -> History:
+    def train(self, train_data: Sequence, test_data: Sequence, epochs: int = 1, callbacks=None) -> History:
         """
         Train for a single epoch, with both `train` and `eval` step in this process
         :return: a History object
@@ -130,6 +140,7 @@ class AcousticModel(object):
             generator=train_data,
             validation_data=test_data,
             validation_steps=200,
+            epochs=epochs,
             verbose=1,
             steps_per_epoch=len(train_data),
             use_multiprocessing=True,

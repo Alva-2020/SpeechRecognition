@@ -26,8 +26,8 @@ DATASET_NAME = "LibriSpeech"
 
 def compute_length_after_conv(max_time_steps, ctc_time_steps, input_length):
     """Computes the time_steps/ctc_input_length after convolution."""
-    ctc_input_length = tf.cast(tf.multiply(input_length, ctc_time_steps), dtype=tf.float32)
     max_time_steps = tf.cast(max_time_steps, dtype=tf.float32)
+    ctc_input_length = tf.cast(tf.multiply(input_length, ctc_time_steps), dtype=tf.float32)
     return tf.cast(tf.floordiv(ctc_input_length, max_time_steps), dtype=tf.int32)
 
 

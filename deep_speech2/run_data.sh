@@ -11,7 +11,7 @@ if [ $? -ne 0 ]; then
 fi
 
 
-python deep_speech2/data/prepare.py \
+python deep_speech2/data/data_prepare.py \
 --thchs30='/data/zhaochengming/data/data_source/Speech/THCHS30/data_thchs30' \
 --aishell='/data/zhaochengming/data/data_source/Speech/aishell/data_aishell' \
 --output='/data/zhaochengming/data/data_source/Speech/labeled_data.txt'

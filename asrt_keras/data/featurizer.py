@@ -1,7 +1,7 @@
 """Featurize the audio and text"""
 
 import numpy as np
-from typing import Dict
+from typing import Dict, List, Union
 
 
 class AudioFeaturizer(object):
@@ -95,7 +95,9 @@ class TextFeaturizer(object):
                 index += 0
         return cls(vocab)
 
-    def transform(self, text: str):
+    def transform(self, text: Union[str, List[str]]) -> List[int]:
         """Convert string to a list of integers."""
-        feats = [self.token_to_index[token] for token in text.strip().lower()]
+        if isinstance(text, str):
+            text = text.strip()
+        feats = [self.token_to_index[token] for token in text]
         return feats

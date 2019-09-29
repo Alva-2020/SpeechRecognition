@@ -3,7 +3,7 @@ echo "DeepSpeech2 processing..."
 cd /data/zhaochengming/projects/SpeechRecognition
 PYTHONPATH=.:$PYTHONPATH
 
-python deep_speech2_tf_research_librispeech/data/prepare.py \
+python deep_speech2_tf_research_librispeech/data/data_prepare.py \
 --source_path='/data/zhaochengming/data/data_source/Speech/LibriSpeech/data' \
 --output_path='/data/zhaochengming/data/data_source/Speech/LibriSpeech/total.dat'
 

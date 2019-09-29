@@ -4,12 +4,13 @@ import os
 import re
 import abc
 import glob
+import pandas as pd
 from tqdm import tqdm
 from collections import namedtuple
-from scipy.io import wavfile
 from pypinyin import lazy_pinyin, Style
 from _utils.nlp import DBC2SBC, fix_no_tone
-from typing import Tuple, Set, Iterator, Dict, Iterable
+from .audio import read_audio
+from typing import Tuple, Set, Iterator, Dict, Iterable, List
 
 
 HAN_PATTERN = re.compile('[\u4e00-\u9fa5]')  # 汉字
@@ -19,10 +20,8 @@ Data = namedtuple("Data", ["src", "duration", "content", "transcript", "partitio
 def stream_write(output_file: str, stream: Iterable[Iterator[Data]]):
     """Write streaming data into disk file."""
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
-    with open(output_file, "w", encoding="utf-8") as fw:
-        for g in stream:
-            for wav_file, duration, content, transcript, partition, tag in g:
-                fw.write("\t".join([wav_file, str(duration), content, transcript, partition, tag]) + "\n")
+    data = pd.DataFrame(data=[row for it in stream for row in it])
+    data.to_csv(output_file, sep="\t", index=False)
 
 
 class BaseLoader(metaclass=abc.ABCMeta):
@@ -45,7 +44,7 @@ class BaseLoader(metaclass=abc.ABCMeta):
     @staticmethod
     def get_duration(audio_file: str):
         """Get the duration of audio in seconds"""
-        fs, samples = wavfile.read(audio_file)
+        fs, samples = read_audio(audio_file)
         return len(samples) / fs
 
     @staticmethod
@@ -161,3 +160,47 @@ class AiShellLoader(BaseLoader):
                         transcript=transcript, partition=partition, tag=self.name)
 
 
+class LibriSpeechLoader(BaseLoader):
+    def __init__(self, source_dir: str):
+        super(LibriSpeechLoader, self).__init__(source_dir)
+
+    @property
+    def name(self):
+        return "libri-speech"
+
+    @staticmethod
+    def _validate_dir(source_dir: str) -> Tuple[bool, str]:
+        if "train-clean-100" not in os.listdir(source_dir):
+            return False, f"`train-clean-100` not under {source_dir}."
+        return True, ""
+
+    @staticmethod
+    def get_rel_info(src: str, start: str) -> Tuple[str, str]:
+        rel_path: str = os.path.relpath(src, start).replace("\\", "/")
+        info_pair = rel_path.split("/", maxsplit=1)[0]
+        partition, tag, *_ = info_pair.split("-", maxsplit=2)
+        return partition, tag
+
+    @staticmethod
+    def read_trans(trans_file: str) -> List[Tuple[str, str]]:
+        dirname = os.path.dirname(trans_file)
+        res = []
+        with open(trans_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                seq_id, transcript = line.split(" ", maxsplit=1)
+                audio_file = os.path.join(dirname, seq_id + ".flac")
+                transcript = transcript.lower()
+                res.append((audio_file, transcript))
+        return res
+
+    def transform(self, source_dir: str) -> Iterator[Data]:
+        for trans_file in tqdm(glob.glob(os.path.join(source_dir, "**/*.trans.txt"), recursive=True)):
+            partition, tag = self.get_rel_info(trans_file, source_dir)
+            tag = self.name + tag
+            for audio_file, transcript in self.read_trans(trans_file):
+                duration = self.get_duration(audio_file)
+                yield Data(src=audio_file, duration=duration, content=transcript,
+                           transcript=transcript, partition=partition, tag=tag)
