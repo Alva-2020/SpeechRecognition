@@ -8,7 +8,10 @@ from _utils.nlp import ALL_PNYS, LETTERS, NUMBERS
 
 def generate_vocab_file(file: str):
     os.makedirs(os.path.dirname(file), exist_ok=True)
-    os.remove(file)
+    try:
+        os.remove(file)
+    except FileNotFoundError:
+        pass
     vocab = [" "] + ALL_PNYS + LETTERS + NUMBERS + ["_"]
     assert len(vocab) == len(ALL_PNYS) + len(LETTERS) + len(NUMBERS) + 2, "Invalid vocab, there are duplicates."
     with open(file, "w", encoding="utf-8") as f:
