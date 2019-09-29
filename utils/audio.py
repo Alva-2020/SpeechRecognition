@@ -7,8 +7,7 @@ from typing import Tuple
 
 
 def read_audio(file: str) -> Tuple[int, np.ndarray]:
-    file = file.lower()
-    if file.endswith(".wav"):
+    if file.endswith(".wav") or file.endswith(".WAV"):
         fs, samples = wavfile.read(file)
     else:
         samples, fs = sf.read(file)
