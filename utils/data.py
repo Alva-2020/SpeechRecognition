@@ -28,6 +28,7 @@ class BaseLoader(metaclass=abc.ABCMeta):
     """Base structure of loading data."""
 
     def __init__(self, source_dir: str):
+        print(f"transform data in {source_dir}")
         if not os.path.exists(source_dir):
             raise IOError(f"{source_dir} not found!")
         _valid, msg = self._validate_dir(source_dir)
