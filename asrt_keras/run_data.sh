@@ -3,7 +3,7 @@ cd /data/zhaochengming/projects/SpeechRecognition
 PYTHONPATH=.:$PYTHONPATH
 
 python asrt_keras/data/vocab_prepare.py \
---output='/data/zhaochengming/projects/SpeechRecognition/Speech/vocab.txt'
+--output='/data/zhaochengming/data/data_source/Speech/vocab.txt'
 
 if [ $? -ne 0 ]; then
     echo "Failed in generating vocab!"
