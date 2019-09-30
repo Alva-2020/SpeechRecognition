@@ -165,6 +165,7 @@ class AcousticModel(object):
             for x, length, label in zip(data, data_length, labels):  # loop on single batch
                 length = np.asscalar(length)
                 encoded_ids = self.predict(x, length)
+                print(encoded_ids)
                 edit_distance = EditDistance.distance_with_tokens(encoded_ids, label)
                 n_tests += 1  # Total num of test
                 n_words += len(label)  # Total target words
