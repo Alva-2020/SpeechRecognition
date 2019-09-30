@@ -162,6 +162,7 @@ class AcousticModel(object):
         for i in tqdm(range(test_num)):  # loop on a bunch of batches
             inputs, _ = test_data[i]  # select a single batch
             data, data_length, labels = inputs[MODELKEYS.INPUT], inputs[MODELKEYS.INPUT_LENGTH], inputs[MODELKEYS.LABELS]
+            data_length = data_length.reshape(-1,)
             for x, length, label in zip(data, data_length, labels):  # loop on single batch
                 encoded_ids = self.predict(x, length)
                 edit_distance = EditDistance.distance_with_tokens(encoded_ids, label)
