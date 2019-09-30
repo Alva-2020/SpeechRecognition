@@ -120,7 +120,7 @@ class DataGenerator(Sequence):
             if pad_num:  # pad features with 8X -> fit model's requirement
                 feature = np.pad(feature, [(0, pad_num), (0, 0), (0, 0)], mode="constant", constant_values=0.)
 
-            label = self.text_featurizer.transform(transcript)
+            label = self.text_featurizer.transform(transcript.split("-"))
             if len(feature) // 8 < self._ctc_len(label):  # ctc length check
                 continue
 

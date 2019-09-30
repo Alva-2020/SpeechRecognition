@@ -84,8 +84,10 @@ class THCHS30Loader(BaseLoader):
         with open(trn_file, "r", encoding="utf-8") as fr:
             content, pinyin, *_ = fr.readlines()
         content = HAN_PATTERN.findall(content)  # 只取汉字部分
-        pinyin = [fix_no_tone(pny) for pny in pinyin.strip().split()]
-        return "".join(content), "-".join(pinyin)
+        content = "".join(content)
+        pinyin = lazy_pinyin(content, style=Style.TONE3, errors="ignore", strict=True)
+        pinyin = "-".join([fix_no_tone(pny) for pny in pinyin])
+        return content, pinyin
 
     def transform(self, source_dir: str) -> Iterator[Data]:
         data_dir, train_dir, test_dir, dev_dir =\
