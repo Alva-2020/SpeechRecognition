@@ -128,7 +128,7 @@ class AcousticModel(object):
         input_length = [self.get_ctc_input_length(input_length)]
         base_pred = self.inference_model.predict(inputs, batch_size=1, steps=1)[:, :, :]
         r = K.ctc_decode(base_pred, input_length=input_length, greedy=True, beam_width=100, top_paths=1)
-        encoded_ids = K.get_value(r[0][0])[0]
+        encoded_ids = K.get_value(r[0][0])[0].astype(int)
         return encoded_ids
 
     def train(self, train_data: Sequence, test_data: Sequence, epochs: int = 1, callbacks=None) -> History:
@@ -165,7 +165,6 @@ class AcousticModel(object):
             for x, length, label in zip(data, data_length, labels):  # loop on single batch
                 length = np.asscalar(length)
                 encoded_ids = self.predict(x, length)
-                print(encoded_ids)
                 edit_distance = EditDistance.distance_with_tokens(encoded_ids, label)
                 n_tests += 1  # Total num of test
                 n_words += len(label)  # Total target words
