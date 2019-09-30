@@ -46,6 +46,10 @@ if __name__ == '__main__':
     parser.add_argument("--gpu_num", type=int, default=1, help="The num of gpu to use.")
     args = parser.parse_args()
 
+    tf.reset_default_graph()
+    K.clear_session()
+    K.set_session(tf.Session(config=get_session_config()))
+
     model_file = os.path.join(args.model_dir, MODEL_FILE)
     callbacks = get_callbacks(args)
 
@@ -53,14 +57,10 @@ if __name__ == '__main__':
     train = DataGenerator(partition="train", config=dataset_config, seed=args.seed)
     dev = DataGenerator(partition="dev", config=dataset_config, seed=args.seed)
 
-    tf.reset_default_graph()
     model = AcousticModel(
         vocab_size=train.n_labels, n_features=train.n_features, gpu_num=args.gpu_num,
         learning_rate=args.learning_rate, is_training=True)
     model.summary()
-
-    K.clear_session()
-    K.set_session(tf.Session(config=get_session_config()))
 
     if os.path.exists(model_file):
         print("Load acoustic model...")
