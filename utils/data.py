@@ -151,7 +151,8 @@ class AiShellLoader(BaseLoader):
         file_content_mapping = self.load_transcripts(transcript_file)
         for partition in ["train", "test", "dev"]:
             partition_path = os.path.join(wav_dir, partition)
-            for wav_file in tqdm(glob.glob(os.path.join(partition_path, "*/*.wav")), desc=f"Loading {self.name} data"):
+            for wav_file in tqdm(glob.glob(os.path.join(partition_path, "*/*.wav")),
+                                 desc=f"Loading {self.name} data {partition}"):
                 filename, _ = os.path.splitext(os.path.basename(wav_file))
                 if filename in file_content_mapping:
                     duration = self.get_duration(wav_file)
