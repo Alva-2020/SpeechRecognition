@@ -128,7 +128,7 @@ class AcousticModel(object):
         input_length = [self.get_ctc_input_length(input_length)]
         base_pred = self.inference_model.predict(inputs, batch_size=1, steps=1)[:, :, :]
         r = K.ctc_decode(base_pred, input_length=input_length, greedy=True, beam_width=100, top_paths=1)
-        encoded_ids = K.get_value(r[0][0])[0].astype(int)
+        encoded_ids = K.get_value(r[0][0])[0]
         return encoded_ids
 
     def train(self, train_data: Sequence, test_data: Sequence, epochs: int = 1, callbacks=None) -> History:

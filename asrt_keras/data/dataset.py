@@ -129,8 +129,8 @@ class DataGenerator(Sequence):
             input_length.append(len(feature))
             label_length.append(len(label))
 
-        wav_data_list = self._padding(wav_data_list)
-        label_data_list = self._padding(label_data_list)
+        wav_data_list = self._padding(wav_data_list).astype(np.float32)
+        label_data_list = self._padding(label_data_list).astype(np.int32)
         return wav_data_list, label_data_list, \
             np.array(input_length).reshape(-1, 1), \
             np.array(label_length).reshape(-1, 1)
