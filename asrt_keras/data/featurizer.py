@@ -19,7 +19,7 @@ class AudioFeaturizer(object):
         self.window_ms = window_ms
         self.stride_ms = stride_ms
         self.normalize = normalize
-        self.n_features = (self.window_ms / 1000 * self.sample_rate) // 2  # 200 by default
+        self.n_features = int(self.window_ms / 1000 * self.sample_rate) // 2  # 200 by default
         self.shape = [None, self.n_features, 1]
 
     def transform(self, samples: np.ndarray):
