@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     model = AcousticModel(
         vocab_size=test.n_labels, n_features=test.n_features, gpu_num=args.gpu_num,
-        learning_rate=args.learning_rate, is_training=False)
+        learning_rate=args.learning_rate, is_training=True)
 
     model_file = os.path.join(args.model_dir, MODEL_FILE)
     if not os.path.exists(model_file):
