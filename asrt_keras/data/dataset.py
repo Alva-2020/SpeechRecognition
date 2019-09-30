@@ -97,7 +97,7 @@ class DataGenerator(Sequence):
     def __len__(self):
         return self._max_buckets
 
-    def __getitem__(self, index) -> Tuple[Dict, np.ndarray]:
+    def __getitem__(self, index) -> Tuple[Dict[str, np.ndarray], np.ndarray]:
         batch_index = self._indexes[index]
         batch_data = self.entries[batch_index * self.batch_size: (batch_index + 1) * self.batch_size]
         wav_data_list, label_data_list, input_length, label_length = self.process_on_batch(batch_data)
@@ -110,7 +110,7 @@ class DataGenerator(Sequence):
         outputs = np.zeros_like(input_length)
         return inputs, outputs
 
-    def process_on_batch(self, batch_data: np.ndarray):
+    def process_on_batch(self, batch_data: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         wav_data_list, label_data_list, input_length, label_length = [], [], [], []
         for src, transcript in batch_data:
             fs, samples = read_audio(src)
@@ -131,7 +131,9 @@ class DataGenerator(Sequence):
 
         wav_data_list = self._padding(wav_data_list)
         label_data_list = self._padding(label_data_list)
-        return wav_data_list, label_data_list, input_length, label_length
+        return wav_data_list, label_data_list, \
+            np.array(input_length).reshape(-1, 1), \
+            np.array(label_length).reshape(-1, 1)
 
     @staticmethod
     def _ctc_len(label: List[int]) -> int:
