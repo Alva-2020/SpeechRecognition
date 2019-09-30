@@ -13,7 +13,7 @@ python asrt_keras/train.py \
 --is_normalize=True \
 --seed=1 \
 --batch_size=4 \
---learning_rate=0.001 \
+--learning_rate=0.0008 \
 --epochs=10 \
 --gpu_num=1
 
