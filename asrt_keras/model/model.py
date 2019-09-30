@@ -68,11 +68,11 @@ class AcousticModel(object):
         self.is_training = is_training
         self.n_features = n_features
         self._inference = _Model(self.n_classes, self.n_features)
+        self.inputs = Input(shape=[None, self.n_features, 1], dtype="float32", name=MODELKEYS.INPUT)
         self.y_pred = self._inference(self.inputs)
 
         self.gpu_num = gpu_num
         self.lr = learning_rate
-        self.inputs = Input(shape=[None, self.n_features, 1], dtype="float32", name=MODELKEYS.INPUT)
         self.inference_model = Model(inputs=self.inputs, outputs=self.y_pred)
         if is_training:
             self._opt_init()
