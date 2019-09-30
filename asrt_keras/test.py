@@ -14,6 +14,7 @@ if __name__ == '__main__':
     parser.add_argument("--data_file", type=str, help="The path where labeled data placed.")
     parser.add_argument("--model_dir", type=str, help="The path where model saved.")
     parser.add_argument("--vocab_file", type=str, help="The path where vocabulary file placed.")
+    parser.add_argument("--sortagrad", type=bool, default=True, help="Whether to sort input audio by length.")
     parser.add_argument("--sample_rate", type=int, default=16000, help="The sample rate for audio.")
     parser.add_argument("--window_ms", type=int, default=20, help="The frame length for spectrogram.")
     parser.add_argument("--stride_ms", type=int, default=10, help="The frame step for spectrogram.")
