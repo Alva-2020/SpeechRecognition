@@ -12,7 +12,7 @@ python asrt_keras/test.py \
 --stride_ms=10 \
 --is_normalize=True \
 --seed=1 \
---batch_size=8 \
+--batch_size=1 \
 --learning_rate=0.0 \
 --gpu_num=1
 
