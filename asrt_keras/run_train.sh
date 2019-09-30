@@ -2,7 +2,7 @@
 cd /data/zhaochengming/projects/SpeechRecognition
 PYTHONPATH=.:$PYTHONPATH
 
-python train.py \
+python asrt_keras/train.py \
 --data_file='/data/zhaochengming/data/data_source/Speech/labeled_data.txt' \
 --vocab_file='/data/zhaochengming/data/data_source/Speech/vocab.txt' \
 --model_dir='/data/zhaochengming/projects/SpeechRecognition/asrt_keras/model_log' \
