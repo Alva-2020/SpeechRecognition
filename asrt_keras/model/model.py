@@ -86,9 +86,9 @@ class AcousticModel(object):
         self.input_length = Input(shape=[1], dtype="int32", name=MODELKEYS.INPUT_LENGTH)
         self.label_length = Input(shape=[1], dtype="int32", name=MODELKEYS.LABEL_LENGTH)
 
-        self.ctc_input_length = Lambda(function=self.get_ctc_input_length, name="ctc_input_length")(self.input_length)
+        ctc_input_length = Lambda(function=self.get_ctc_input_length, name="ctc_input_length")(self.input_length)
         self.loss = Lambda(function=self.ctc_loss, name="ctc_loss")\
-            ([self.labels, self.y_pred, self.ctc_input_length, self.label_length])  # function 只接受一个占位输入
+            ([self.labels, self.y_pred, ctc_input_length, self.label_length])  # function 只接受一个占位输入
         self.ctc_model = Model(inputs=[self.inputs, self.labels, self.input_length, self.label_length], outputs=self.loss)
         if self.gpu_num > 1:
             self.train_model = multi_gpu_model(model=self.ctc_model, gpus=self.gpu_num)
