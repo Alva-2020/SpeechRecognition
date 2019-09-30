@@ -21,6 +21,7 @@ if __name__ == '__main__':
     parser.add_argument("--is_normalize", type=bool, default=True, help="whether normalize the audio feature.")
     parser.add_argument("--seed", type=int, default=1, help="The random seed.")
     parser.add_argument("--batch_size", type=int, default=8, help="The data feed batch size.")
+    parser.add_argument("--learning_rate", type=float, default=1e-4, help="The learning rate.")
     parser.add_argument("--gpu_num", type=int, default=1, help="The num of gpu to use.")
     args = parser.parse_args()
 
