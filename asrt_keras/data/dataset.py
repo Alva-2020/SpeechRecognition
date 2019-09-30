@@ -8,7 +8,7 @@ from random import Random
 from tensorflow.python.keras.utils import Sequence
 from .featurizer import AudioFeaturizer, TextFeaturizer
 from ..config import MODELKEYS
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Union
 
 
 class AudioConfig(object):
@@ -144,9 +144,10 @@ class DataGenerator(Sequence):
         return len(label) + add_len
 
     @staticmethod
-    def _padding(data: List[np.ndarray]) -> np.ndarray:
+    def _padding(data: List[Union[List, np.ndarray]]) -> np.ndarray:
         max_lens = max([len(feature) for feature in data])
-        pad_shape = (len(data), max_lens, *data[0].shape[1:])
+        rest_shapes = np.array(data[0]).shape[1:]
+        pad_shape = (len(data), max_lens, *rest_shapes)
         res = np.zeros(shape=pad_shape)
         for i, x in enumerate(data):
             res[i, :len(x)] = x
