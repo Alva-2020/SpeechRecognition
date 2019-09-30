@@ -39,7 +39,7 @@ if __name__ == '__main__':
     model_file = os.path.join(args.model_dir, MODEL_FILE)
     if not os.path.exists(model_file):
         raise IOError(f"file not found in `{model_file}`.")
-    model.inference_model.load_model(model_file)
+    model.inference_model.load_weights(model_file)
 
     macro_avg_cer, micro_avg_cer = model.test(test, 100)
     print(f"Macro Avg. CER: {macro_avg_cer}, Micro Avg. CER: {micro_avg_cer}.")
