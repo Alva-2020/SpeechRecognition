@@ -92,7 +92,7 @@ class TextFeaturizer(object):
                 if line.startswith("#") or not line:
                     continue
                 vocab[line] = index
-                index += 0
+                index += 1
         return cls(vocab)
 
     def transform(self, text: Union[str, List[str]]) -> List[int]:
