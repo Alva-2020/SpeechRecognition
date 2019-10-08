@@ -139,24 +139,6 @@ class AcousticModel(object):
         out = self.decode([inputs, input_length])[0][0]
         return out
 
-    def _predict(self, inputs: np.ndarray, input_length: int):
-        """Predict on a single speech sample
-        :param inputs: The audio samples, require of shape [?, n_features, 1]
-        :param input_length: The time frames of samples before decode.
-        :return: List of ids of labels.
-        """
-        if inputs.ndim != 3 or inputs.shape[-1] != 1 or inputs.shape[-2] != self.n_features:
-            raise TypeError(f"Require inputs to be of shape [?, {self.n_features}, 1], got {inputs.shape}.")
-        if not isinstance(input_length, int):
-            raise TypeError(f"Require input length to be a int scalar, got {type(input_length)}.")
-
-        inputs = inputs[np.newaxis, :]  # batch_size = 1
-        input_length = [self.get_ctc_input_length(input_length)]
-        base_pred = self.inference_model.predict(inputs, batch_size=1, steps=1)[:, :, :]
-        r = K.ctc_decode(base_pred, input_length=input_length, greedy=True, beam_width=100, top_paths=1)
-        encoded_ids = K.get_value(r[0][0])[0]
-        return encoded_ids
-
     def train(self, train_data: Sequence, test_data: Sequence, epochs: int = 1, callbacks=None) -> History:
         """
         Train for a single epoch, with both `train` and `eval` step in this process
@@ -174,7 +156,7 @@ class AcousticModel(object):
             callbacks=callbacks)
         return h
 
-    def test(self, test_data: Sequence, test_num: int = -1) -> Tuple[float, float]:
+    def test(self, test_data: Sequence, test_num: int = -1) -> Tuple[float, float, list, list]:
         """Test on `test_data` for `test_num` batches, compute cer.
         :return: A tuple of cer in different calculation scope.
         `macro_avg_cer`, averaged cer by total testing samples, each sample is equally considered regardless of length.
@@ -185,12 +167,16 @@ class AcousticModel(object):
 
         n_tests, n_words, errors = 0, 0, 0
         total_cer = 0.
+        label_holders = []
+        decode_holders = []
         for i in tqdm(range(test_num)):  # loop on a bunch of batches
             inputs, _ = test_data[i]  # select a single batch
             data, data_length, labels = inputs[MODELKEYS.INPUT], inputs[MODELKEYS.INPUT_LENGTH], inputs[MODELKEYS.LABELS]
             for x, length, label in zip(data, data_length, labels):  # loop on single batch
                 length = np.asscalar(length)
                 encoded_ids = self.predict(x, length)
+                label_holders.append(list(label))
+                decode_holders.append(list(encoded_ids))
                 edit_distance = EditDistance.distance_with_tokens(encoded_ids, label)
                 n_tests += 1  # Total num of test
                 n_words += len(label)  # Total target words
@@ -199,7 +185,7 @@ class AcousticModel(object):
 
         macro_avg_cer = total_cer / n_tests  # Avg cer by total samples.
         micro_avg_cer = errors / n_words  # Avg cer by total words.
-        return macro_avg_cer, micro_avg_cer
+        return macro_avg_cer, micro_avg_cer, label_holders, decode_holders
 
     def save_model(self, file: str):
         """Save main model, ctc_model in this class"""

@@ -41,5 +41,11 @@ if __name__ == '__main__':
         raise IOError(f"file not found in `{model_file}`.")
     model.inference_model.load_weights(model_file)
 
-    macro_avg_cer, micro_avg_cer = model.test(test, -1)
+    macro_avg_cer, micro_avg_cer, labels, decodes = model.test(test, -1)
     print(f"Macro Avg. CER: {macro_avg_cer}, Micro Avg. CER: {micro_avg_cer}.")
+
+    with open(os.path.join(args.model_dir, "test_log.txt"), "w") as f:
+        for label, decoded in zip(labels, decodes):
+            label = "-".join(map(str, label))
+            decoded = "-".join(map(str, decoded))
+            f.write(label + "\t" + decoded + "\n")
