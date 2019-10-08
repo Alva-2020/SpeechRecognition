@@ -57,8 +57,8 @@ class _Model:
         return x
 
     @staticmethod
-    def get_decode_input_length(x):
-        return K.shape(x)[1] // 8
+    def get_decode_input_length(input_length):
+        return input_length // 8
 
 
 class AcousticModel(object):
@@ -69,11 +69,16 @@ class AcousticModel(object):
         self.n_features = n_features
         self._inference = _Model(self.n_classes, self.n_features)
         self.inputs = Input(shape=[None, self.n_features, 1], dtype="float32", name=MODELKEYS.INPUT)
+        self.input_length = Input(shape=[1], dtype="int32", name=MODELKEYS.INPUT_LENGTH)
+        self.ctc_input_length = Lambda(function=self.get_ctc_input_length, name="ctc_input_length")(self.input_length)
         self.y_pred = self._inference(self.inputs)
+        self.decode = K.function([self.inputs, self.input_length],
+                                 outputs=[self._decode(self.y_pred, self.ctc_input_length)])
 
         self.gpu_num = gpu_num
         self.lr = learning_rate
         self.inference_model = Model(inputs=self.inputs, outputs=self.y_pred)
+
         if is_training:
             self._opt_init()
 
@@ -83,12 +88,9 @@ class AcousticModel(object):
 
     def _opt_init(self):
         self.labels = Input(shape=[None], dtype="int32", name=MODELKEYS.LABELS)
-        self.input_length = Input(shape=[1], dtype="int32", name=MODELKEYS.INPUT_LENGTH)
         self.label_length = Input(shape=[1], dtype="int32", name=MODELKEYS.LABEL_LENGTH)
-
-        ctc_input_length = Lambda(function=self.get_ctc_input_length, name="ctc_input_length")(self.input_length)
         self.loss = Lambda(function=self.ctc_loss, name="ctc_loss")\
-            ([self.labels, self.y_pred, ctc_input_length, self.label_length])  # function 只接受一个占位输入
+            ([self.labels, self.y_pred, self.ctc_input_length, self.label_length])  # function 只接受一个占位输入
         self.ctc_model = Model(inputs=[self.inputs, self.labels, self.input_length, self.label_length], outputs=self.loss)
         if self.gpu_num > 1:
             self.train_model = multi_gpu_model(model=self.ctc_model, gpus=self.gpu_num)
@@ -113,7 +115,31 @@ class AcousticModel(object):
         cost = K.ctc_batch_cost(y_true=labels, y_pred=y_pred, input_length=ctc_input_length, label_length=label_length)
         return K.mean(cost)
 
+    @staticmethod
+    def _decode(y_pred, ctc_input_length):
+        base_pred = y_pred[:, :, :]
+        input_length = ctc_input_length[:, 0]
+        r = K.ctc_decode(base_pred, input_length=input_length, greedy=True, beam_width=100, top_paths=1)
+        encoded_ids = r[0][0]
+        return encoded_ids
+
     def predict(self, inputs: np.ndarray, input_length: int):
+        """Predict on a single speech sample
+        :param inputs: The audio samples, require of shape [?, n_features, 1]
+        :param input_length: The time frames of samples before decode.
+        :return: List of ids of labels.
+        """
+        if inputs.ndim != 3 or inputs.shape[-1] != 1 or inputs.shape[-2] != self.n_features:
+            raise TypeError(f"Require inputs to be of shape [?, {self.n_features}, 1], got {inputs.shape}.")
+        if not isinstance(input_length, int):
+            raise TypeError(f"Require input length to be a int scalar, got {type(input_length)}.")
+
+        inputs = inputs[np.newaxis, :]  # batch_size = 1
+        input_length = np.array([input_length])[np.newaxis, :]  # batch_size = 1
+        out = self.decode([inputs, input_length])[0][0]
+        return out
+
+    def _predict(self, inputs: np.ndarray, input_length: int):
         """Predict on a single speech sample
         :param inputs: The audio samples, require of shape [?, n_features, 1]
         :param input_length: The time frames of samples before decode.

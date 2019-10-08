@@ -20,7 +20,7 @@ if __name__ == '__main__':
     parser.add_argument("--stride_ms", type=int, default=10, help="The frame step for spectrogram.")
     parser.add_argument("--is_normalize", type=bool, default=True, help="whether normalize the audio feature.")
     parser.add_argument("--seed", type=int, default=1, help="The random seed.")
-    parser.add_argument("--batch_size", type=int, default=8, help="The data feed batch size.")
+    parser.add_argument("--batch_size", type=int, default=1, help="The data feed batch size.")
     parser.add_argument("--learning_rate", type=float, default=1e-4, help="The learning rate.")
     parser.add_argument("--gpu_num", type=int, default=1, help="The num of gpu to use.")
     args = parser.parse_args()
@@ -41,5 +41,5 @@ if __name__ == '__main__':
         raise IOError(f"file not found in `{model_file}`.")
     model.inference_model.load_weights(model_file)
 
-    macro_avg_cer, micro_avg_cer = model.test(test, 100)
+    macro_avg_cer, micro_avg_cer = model.test(test, -1)
     print(f"Macro Avg. CER: {macro_avg_cer}, Micro Avg. CER: {micro_avg_cer}.")
