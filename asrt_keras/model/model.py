@@ -98,7 +98,7 @@ class AcousticModel(object):
             self.train_model = self.ctc_model
 
         self.train_model.compile(
-            optimizer=Adam(lr=self.lr, beta_1=0.9, beta_2=0.999, decay=0.01, epsilon=1e-7),
+            optimizer=Adam(lr=self.lr, beta_1=0.9, beta_2=0.999, decay=0.0, epsilon=1e-7),
             # 这里的outputs就是loss，而不是基于inputs和outputs计算的损失
             # key的名称必须是层的名称，如上文中的ctc_loss
             loss={"ctc_loss": lambda inputs, outputs: outputs}
