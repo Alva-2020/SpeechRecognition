@@ -8,7 +8,7 @@ import pandas as pd
 from tqdm import tqdm
 from collections import namedtuple
 from pypinyin import lazy_pinyin, Style
-from _utils.nlp import DBC2SBC, fix_no_tone
+from evan_utils.nlp import DBC2SBC, fix_no_tone
 from .audio import read_audio
 from typing import Tuple, Set, Iterator, Dict, Iterable, List
 

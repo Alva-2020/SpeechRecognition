@@ -6,7 +6,7 @@ from deep_speech_by_audier.constant import make_pny_vocab, DATA_SOURCE_DIR, AM_L
 from deep_speech_by_audier.input_data import DataGenerator
 from deep_speech_by_audier.model.speech import AcousticModel
 from deep_speech_by_audier.model.utils import get_session
-from _utils.utensorflow import get_board_log_path
+from evan_utils.utensorflow import get_board_log_path
 from typing import Dict
 import tensorflow as tf
 

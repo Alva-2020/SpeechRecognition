@@ -10,9 +10,9 @@ import tensorflow as tf
 from deep_speech2_udf_librispeech.model_utils.model import Model
 from deep_speech2_udf_librispeech.data import dataset
 from deep_speech2_udf_librispeech.metrics import EditDistance
-from _utils.confighandler import ConfigHandler
-from _utils.utensorflow.utils import get_ckpt_global_step
-from _utils.utensorflow.record import generate_feature_desc
+from evan_utils.confighandler import ConfigHandler
+from evan_utils.utensorflow.utils import get_ckpt_global_step
+from evan_utils.utensorflow.record import generate_feature_desc
 from typing import List, Dict, Any
 from tqdm import tqdm
 

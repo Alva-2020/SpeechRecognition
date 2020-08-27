@@ -8,7 +8,7 @@ import os
 import glob
 import tqdm
 import threading
-from _utils.conn import get_aws_conn
+from evan_utils.conn import get_aws_conn
 from project_trial.constant import FRAGMENTED_AUDIO_PATH
 
 

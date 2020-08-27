@@ -5,7 +5,7 @@ and offering data reader interface of tensorflow requirements.
 
 import random
 import numpy as np
-import _utils.tensorflow as utf
+import _utils.utensorflow as utf
 from deep_speech2.tools.build_vocab import get_vocab_column
 from deep_speech2.data_utils.utility import read_data
 from deep_speech2.data_utils.augmentor import AugmentationPipeline
@@ -43,10 +43,10 @@ class DataGenerator(object):
     :type keep_transcription_text: bool
     """
     def __init__(self, data_file: str, partition: str, vocab_file: str, vocab_type: str,
-                 mean_std_file: str, augmentation_config: str="{}", max_duration: float=float("inf"),
-                 min_duration: float=0., stride_ms: float=10., window_ms: float=20., max_freq: Optional[float]=None,
-                 sample_rate: int=16000, specgram_type: str="linear", use_dB_normalization: bool=True, random_seed: int=0,
-                 keep_transcription_text: bool=False):
+                 mean_std_file: str, augmentation_config: str = "{}", max_duration: float = float("inf"),
+                 min_duration: float = 0., stride_ms: float = 10., window_ms: float = 20., max_freq: Optional[float]=None,
+                 sample_rate: int = 16000, specgram_type: str = "linear", use_dB_normalization: bool = True, random_seed: int=0,
+                 keep_transcription_text: bool = False):
 
         self._augmentation_pipeline = \
             AugmentationPipeline(augmentation_config=augmentation_config, random_seed=random_seed)

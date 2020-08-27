@@ -9,7 +9,7 @@ from tensorflow.python.keras.utils import Sequence, multi_gpu_model
 from ..config import MODELKEYS
 from tqdm import tqdm
 from typing import Tuple
-from _utils.udistance import EditDistance
+from evan_utils.udistance import EditDistance
 
 
 class _Model:

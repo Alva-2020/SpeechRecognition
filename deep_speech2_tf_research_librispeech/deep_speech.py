@@ -11,8 +11,8 @@ import deep_speech2_tf_research_librispeech.data.dataset as dataset
 import deep_speech2_tf_research_librispeech.model.network as deep_speech_model
 import deep_speech2_tf_research_librispeech.decoder as decoder
 import _utils.utensorflow.misc.distribution_utils as distribution_utils
-from _utils.utensorflow.utils import get_session_config
-from _utils.utensorflow.logs import logger, hooks_helper
+from evan_utils.utensorflow.utils import get_session_config
+from evan_utils.utensorflow.logs import logger, hooks_helper
 from typing import List, Dict
 
 

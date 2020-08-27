@@ -4,7 +4,7 @@ from collections import Counter
 from pypinyin import Style
 from pypinyin.constants import PINYIN_DICT, PHRASES_DICT
 from pypinyin.core import to_fixed
-from _utils.nlp.tools import common_words
+from evan_utils.nlp.tools import common_words
 from deep_speech2.data_utils.utility import read_data
 from typing import List, Optional
 

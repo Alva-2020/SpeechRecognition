@@ -5,7 +5,7 @@ import platform
 from pypinyin import Style
 from pypinyin.constants import PINYIN_DICT, PHRASES_DICT
 from pypinyin.core import to_fixed
-from _utils.nlp import common_words
+from evan_utils.nlp import common_words
 from typing import Dict
 
 system = platform.system().lower()

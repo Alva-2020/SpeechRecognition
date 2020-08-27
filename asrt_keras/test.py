@@ -6,7 +6,7 @@ from tensorflow.python.keras import backend as K
 from asrt_keras.data.dataset import DataGenerator
 from asrt_keras.model.model import AcousticModel
 from asrt_keras.train import MODEL_FILE, get_dataset_config
-from _utils.utensorflow import get_session_config
+from evan_utils.utensorflow import get_session_config
 
 
 if __name__ == '__main__':

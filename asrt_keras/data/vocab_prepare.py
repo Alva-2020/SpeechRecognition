@@ -3,7 +3,7 @@ Generate vocab
 """
 import os
 import argparse
-from _utils.nlp import ALL_PNYS, LETTERS, NUMBERS
+from evan_utils.nlp import ALL_PNYS, LETTERS, NUMBERS
 
 
 def generate_vocab_file(file: str):

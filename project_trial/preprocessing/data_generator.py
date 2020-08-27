@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from xpinyin import Pinyin
 from project_trial.constant import MERGED_FILE, PURED_FILE, TRAIN_AUDIO_PATH, TEST_AUDIO_PATH, PATH, clear_path, MAX_TIME
-from _utils.nlp.u_nlp import DBC2SBC
+from evan_utils.nlp.u_nlp import DBC2SBC
 from scipy.io import wavfile
 from tqdm import tqdm
 from typing import Optional

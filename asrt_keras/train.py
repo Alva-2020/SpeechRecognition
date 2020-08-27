@@ -6,7 +6,7 @@ from tensorflow.python.keras.callbacks import ModelCheckpoint, TensorBoard
 from tensorflow.python.keras import backend as K
 from asrt_keras.data.dataset import AudioConfig, DatasetConfig, DataGenerator
 from asrt_keras.model.model import AcousticModel
-from _utils.utensorflow import get_board_log_path, get_session_config
+from evan_utils.utensorflow import get_board_log_path, get_session_config
 from typing import List
 
 

@@ -7,7 +7,7 @@ sys.path.append("F:/Code projects/Python/SpeechRecognition" if platform.system()
                 else "/data/zhaochengming/projects/SpeechRecognition")
 import pandas as pd
 import tensorflow as tf
-from _utils.tf.util import get_ckpt_global_step
+from evan_utils.tf.util import get_ckpt_global_step
 from project_trial.constant import PATH, PURED_FILE, TRAIN_AUDIO_PATH, TEST_AUDIO_PATH, INVERSE_LABEL_MAP, N_CLASSES, SPACE_INDEX, SEP_INDEX, clear_path
 from project_trial.input_data import N_FEATURES, get_batch, get_expected_label_length
 from project_trial.model import Model

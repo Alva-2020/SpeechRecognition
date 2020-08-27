@@ -12,7 +12,7 @@ from deep_speech_by_audier.model.speech import AcousticModel
 from deep_speech_by_audier.model.utils import get_session, decode_ctc
 from deep_speech_by_audier.constant import make_pny_vocab, DATA_SOURCE_DIR, AM_LOG_DIR, AM_MODEL_DIR
 from deep_speech_by_audier.input_data import DataGenerator
-from _utils.u_distance import _levenshtein
+from evan_utils.u_distance import _levenshtein
 from tqdm import tqdm
 from typing import Dict
 
